@@ -249,39 +249,38 @@ function driveFileId(url){
 function firstFileUrl(value){ return fileUrls(value)[0]||''; }
 function driveOpen(url){
   const raw=firstFileUrl(url), id=driveFileId(raw);
-  return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view' : raw;
+  if(!raw) return '';
+  // Google Form uploads commonly arrive as https://drive.google.com/open?id=FILE_ID.
+  // Preserve that original URL because it is the most reliable viewer route.
+  return raw;
 }
 function drivePreview(url){
   const raw=firstFileUrl(url), id=driveFileId(raw);
-  return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview' : raw;
+  return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view' : raw;
 }
 function driveImage(url){
-  const raw=firstFileUrl(url), id=driveFileId(raw);
-  return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1600' : raw;
+  // Do not use Drive thumbnail/uc URLs for the main viewer; they can be blocked.
+  // The exact Form-upload URL is opened directly instead.
+  return driveOpen(url);
 }
 function firstFileValue(r, keys){
   for(const k of keys){ const v=val(r,k); if(String(v||'').trim()) return v; }
   return '';
 }
 function openDoc(url,title='DOCUMENT'){
-  const raw=String(url||'').trim();
+  const raw=firstFileUrl(url);
+  const modal=document.getElementById('docModal'),body=document.getElementById('docBody');
+  document.getElementById('docTitle').textContent=title;
   if(!raw){
-    const modal=document.getElementById('docModal'),body=document.getElementById('docBody');
-    document.getElementById('docTitle').textContent=title;
     body.innerHTML='<div class="doc-fallback"><strong>NO SUBMITTED '+esc(title)+'</strong><p>No '+esc(title.toLowerCase())+' was submitted with this historical vehicle record.</p></div>';
     modal.classList.add('show'); return;
   }
   const link=driveOpen(raw);
   const preview=drivePreview(raw);
-  const modal=document.getElementById('docModal'),body=document.getElementById('docBody');
-  document.getElementById('docTitle').textContent=title;
-  body.innerHTML='<div class="doc-actions"><a class="doc-open" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">OPEN DOCUMENT IN GOOGLE DRIVE</a></div><iframe class="doc-iframe" src="'+esc(preview)+'" title="'+esc(title)+'"></iframe><div class="doc-note">If the document is not displayed, open it in Google Drive using the button above. The uploaded Drive file must be shared with the account viewing this site, or set to “Anyone with the link” as Viewer.</div>';
+  body.innerHTML='<div class="doc-actions"><a class="doc-open" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">OPEN '+esc(title)+' IN GOOGLE DRIVE</a></div><div class="doc-fallback"><strong>DOCUMENT READY</strong><p>Use the button above to open the exact file submitted with this historical vehicle record.</p><p class="doc-note">Google Drive may block embedded previews inside this website. Opening the original Google Drive link avoids that restriction.</p></div>';
   modal.classList.add('show');
 }
 
-function closeDoc(){document.getElementById('docModal').classList.remove('show');document.getElementById('docBody').innerHTML=''}
-document.getElementById('docModal').addEventListener('click',e=>{if(e.target.id==='docModal')closeDoc()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDoc()});
 function firstAvailable(r,keys){for(const k of keys)if(r[k])return r[k];return ''}
 function section(title,rows){
   return '<div class="detail-section"><h3>'+esc(title)+'</h3><div class="detail-grid">'+
@@ -359,9 +358,8 @@ function show(r){
   let h='<div class=\"detail-intro\"><div><div class=\"vehicle-name\">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class=\"vehicle-meta\">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
   h+='<div class="vehicle-layout"><div><div class="photo-box">';
   if(photo){
-    const pid=driveFileId(photo); const psrc=pid ? 'https://drive.google.com/uc?export=view&id='+encodeURIComponent(pid) : firstFileUrl(photo);
-    h+='<img src="'+esc(psrc)+'" alt="Vehicle photograph" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">';
-    h+='<div class="photo-placeholder" style="display:none">PHOTO PREVIEW UNAVAILABLE<br>USE VIEW VEHICLE PICTURE BELOW</div>';
+    const psrc=driveOpen(photo);
+    h+='<div class="photo-placeholder"><strong>VEHICLE PHOTOGRAPH AVAILABLE</strong><br><span>Click VIEW VEHICLE PICTURE to open the exact submitted photograph.</span></div>';
   } else h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
   h+='</div><div class="actions no-print"><button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button></div></div>';
   h+='<div><div class=\"summary\">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>'<div class=\"card\"><div class=\"k\">'+esc(x[0])+'</div><div class=\"v\">'+esc(val(r,x[1])||'—')+'</div></div>').join('')+'</div>';
