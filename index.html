@@ -57,7 +57,7 @@ tr:hover td{background:#f8fafc}
 .detail-intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px;padding:13px 15px;border-radius:10px;background:linear-gradient(135deg,#f6f8fb,#fff);border:1px solid #e0e7ef}
 .detail-intro .vehicle-name{font-size:19px;font-weight:850;color:var(--navy);letter-spacing:.2px}
 .detail-intro .vehicle-meta{font-size:11px;color:#667085;margin-top:3px}
-.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:24px 26px;min-height:210px;width:100%}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:16px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:9px;padding-top:9px;border-top:1px solid #e3e8ef;font-size:13px;line-height:1.7;color:#344054;white-space:pre-wrap;word-break:break-word}
+.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:30px 32px;min-height:280px;width:100%}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:18px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:14px;padding-top:14px;border-top:1px solid #e3e8ef;font-size:14px;line-height:1.8;color:#344054;white-space:pre-wrap;word-break:break-word}
 .report-note{font-size:11px;color:#667085;margin-top:8px}
 .doc-modal{position:fixed;inset:0;background:rgba(4,18,39,.72);display:none;align-items:center;justify-content:center;padding:28px;z-index:9999}
 .doc-modal.show{display:flex}
@@ -776,6 +776,13 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     const id=fileIdFinal(url); return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview' : '';
   }
 
+  window.closeDoc=function(){
+    const modal=document.getElementById('docModal');
+    const body=document.getElementById('docBody');
+    if(modal) modal.classList.remove('show');
+    if(body) body.innerHTML='';
+  };
+
   window.openDoc=function(url,title='DOCUMENT'){
     const raw=rawFinal(url), id=fileIdFinal(raw);
     const modal=document.getElementById('docModal'), body=document.getElementById('docBody');
@@ -789,7 +796,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
       '<div class="doc-actions" style="margin-bottom:12px">'+
       '<a class="doc-open" href="'+esc(raw)+'" target="_blank" rel="noopener noreferrer">OPEN EXACT FILE IN GOOGLE DRIVE</a>'+
       '</div>'+
-      '<iframe src="'+esc(preview)+'" title="'+esc(title)+'" style="width:100%;height:70vh;border:1px solid #d7dde5;border-radius:8px;background:#fff" allow="autoplay"></iframe>'+
+      '<iframe src="'+esc(preview)+'" title="'+esc(title)+'" style="width:100%;height:calc(92vh - 125px);min-height:420px;border:1px solid #d7dde5;border-radius:8px;background:#fff" allow="autoplay"></iframe>'+
       '<div class="doc-fallback" style="margin-top:10px"><p class="doc-note">This is the exact file attached to the selected historical response.</p></div>';
     modal.classList.add('show');
   };
@@ -823,12 +830,12 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     h+='<div><div class="summary">'+main.map(x=>{
       const v=x[0]==='Color'?color:val(r,x[1]);
       return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
-    }).join('')+'</div></div></div>';
+    }).join('')+'</div>';
 
     h+='<div class="actions no-print" style="margin-top:18px">';
     if(reg) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
     if(ins) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(ins)+',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
-    h+='</div>';
+    h+='</div></div></div>';
 
     h+=section('VEHICLE INFORMATION',[
       ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],['Color','__COLOR__'],['Current Odometer Reading (km)',F.odo],['Current Vehicle Status',F.status]
@@ -849,7 +856,6 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     document.getElementById('details').innerHTML=h;
     details.style.display='block';
     document.getElementById('results').style.display='block';
-    window.scrollTo({top:0,behavior:'smooth'});
   };
 })();
 </script>
