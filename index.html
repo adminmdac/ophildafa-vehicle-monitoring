@@ -57,7 +57,12 @@ tr:hover td{background:#f8fafc}
 .detail-intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px;padding:13px 15px;border-radius:10px;background:linear-gradient(135deg,#f6f8fb,#fff);border:1px solid #e0e7ef}
 .detail-intro .vehicle-name{font-size:19px;font-weight:850;color:var(--navy);letter-spacing:.2px}
 .detail-intro .vehicle-meta{font-size:11px;color:#667085;margin-top:3px}
-.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:30px 32px;min-height:330px;width:calc(100% + 22px);max-width:none;box-sizing:border-box}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:18px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:14px;padding-top:14px;border-top:1px solid #e3e8ef;font-size:14px;line-height:1.8;color:#344054;white-space:pre-wrap;word-break:break-word}
+.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:30px 32px;min-height:330px;width:100%;box-sizing:border-box}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:18px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:14px;padding-top:14px;border-top:1px solid #e3e8ef;font-size:14px;line-height:1.8;color:#344054;white-space:pre-wrap;word-break:break-word}
+# Final surgical Vehicle Status presentation: preserve height, use full available width,
+# with Column M on the first row and Column N directly below.
+# No other layout or functional rules are changed.
+.vehicle-status-box{width:100%;max-width:none;min-height:330px;display:block}
+
 .report-note{font-size:11px;color:#667085;margin-top:8px}
 .doc-modal{position:fixed;inset:0;background:rgba(4,18,39,.72);display:none;align-items:center;justify-content:center;padding:28px;z-index:9999}
 .doc-modal.show{display:flex}
@@ -426,13 +431,13 @@ function printVehicle(){
   const win=window.open('','_blank');
   const row=(label,key)=>`<tr><td>${esc(label)}</td><td>${esc(val(r,key)||'—')}</td></tr>`;
   win.document.write(`<!doctype html><html><head><title>Vehicle Report - ${esc(val(r,F.plate))}</title><style>
-  @page{size:A4;margin:12mm 13mm 14mm}body{font-family:Arial,Helvetica,sans-serif;color:#172033;font-size:9.5px;line-height:1.35;background:#fff}
-  .head{border-top:6px solid #09254a;border-bottom:3px solid #b58a2a;padding:10px 0 9px 0;position:relative}.title{font-size:18px;font-weight:900;color:#09254a;letter-spacing:.8px;text-transform:uppercase}
-  .sub{font-size:8.5px;color:#667085;margin-top:4px;letter-spacing:.25px}.period{margin-top:11px;padding:7px 10px;border-left:4px solid #b58a2a;background:#f2f5f8;color:#09254a;font-weight:800;letter-spacing:.25px}
-  h2{font-size:10px;background:#09254a;color:white;padding:7px 9px;margin:13px 0 0;border-left:4px solid #b58a2a;letter-spacing:.8px;text-transform:uppercase}
-  table{width:100%;border-collapse:collapse;page-break-inside:auto}tr{page-break-inside:avoid;page-break-after:auto}td{border:1px solid #cfd7e2;padding:5px 7px;vertical-align:top}td:first-child{width:28%;font-weight:800;color:#173d70;background:#f4f6f8}
-  .photo{position:absolute;top:12mm;right:13mm;width:50mm;height:37mm;object-fit:contain;border:1px solid #b9c5d3;background:#fff;padding:1.5mm;box-sizing:border-box}.head{padding-right:56mm}
-  .clear{clear:both}.footer{margin-top:18px;padding-top:7px;border-top:1px solid #cfd7e2;font-size:7.5px;color:#667085;line-height:1.4}
+  @page{size:A4;margin:13mm}body{font-family:Arial,sans-serif;color:#172033;font-size:10px}
+  .head{border-bottom:4px solid #b58a2a;padding-bottom:8px}.title{font-size:19px;font-weight:800;color:#09254a}
+  .sub{font-size:10px;color:#667085;margin-top:3px}.period{margin-top:10px;font-weight:800}
+  h2{font-size:11px;background:#09254a;color:white;padding:6px 8px;margin:12px 0 0}
+  table{width:100%;border-collapse:collapse}td{border:1px solid #d8dee7;padding:5px;vertical-align:top}td:first-child{width:28%;font-weight:800;background:#f4f6f8}
+  .photo{position:absolute;top:13mm;right:13mm;width:52mm;height:39mm;object-fit:contain;border:1px solid #ccd5df;background:#fff;padding:1mm;box-sizing:border-box}.head{padding-right:58mm}
+  .clear{clear:both}.footer{margin-top:16px;font-size:8px;color:#667085}
   </style></head><body>
   <div class="head"><div class="title">OPHILDAFA VEHICLE MONITORING REPORT</div><div class="sub">Military Diplomatic Affairs Center | Historical Vehicle Record</div></div>
   ${photo?`<img class="photo" src="${esc(printVehicleImageUrl(photo))}" onerror="this.style.display='none'">`:''}
