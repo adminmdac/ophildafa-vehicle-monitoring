@@ -57,7 +57,7 @@ tr:hover td{background:#f8fafc}
 .detail-intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px;padding:13px 15px;border-radius:10px;background:linear-gradient(135deg,#f6f8fb,#fff);border:1px solid #e0e7ef}
 .detail-intro .vehicle-name{font-size:19px;font-weight:850;color:var(--navy);letter-spacing:.2px}
 .detail-intro .vehicle-meta{font-size:11px;color:#667085;margin-top:3px}
-.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:30px 32px;min-height:390px;width:100%}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:18px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:14px;padding-top:14px;border-top:1px solid #e3e8ef;font-size:14px;line-height:1.8;color:#344054;white-space:pre-wrap;word-break:break-word}
+.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:30px 32px;min-height:240px;width:100%}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:18px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:14px;padding-top:14px;border-top:1px solid #e3e8ef;font-size:14px;line-height:1.8;color:#344054;white-space:pre-wrap;word-break:break-word}
 .report-note{font-size:11px;color:#667085;margin-top:8px}
 .doc-modal{position:fixed;inset:0;background:rgba(4,18,39,.72);display:none;align-items:center;justify-content:center;padding:28px;z-index:9999}
 .doc-modal.show{display:flex}
@@ -426,7 +426,7 @@ function printVehicle(){
   .clear{clear:both}.footer{margin-top:16px;font-size:8px;color:#667085}
   </style></head><body>
   <div class="head"><div class="title">OPHILDAFA VEHICLE MONITORING REPORT</div><div class="sub">Military Diplomatic Affairs Center | Historical Vehicle Record</div></div>
-  ${photo?`<img class="photo" src="${esc(driveImage(photo))}" onerror="this.style.display='none'">`:''}
+  ${photo?`<img class="photo" src="${esc((()=>{const id=driveFileId(photo); return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1200' : driveImage(photo);})())}" onerror="this.style.display='none'">`:''}
   <div class="period">${esc(val(r,F.post))} — ${esc(val(r,F.quarter))} CY ${esc(val(r,F.year))}</div>
   <h2>VEHICLE INFORMATION</h2><table>
   ${row('Post',F.post)}${row('Reporting Quarter',F.quarter)}${row('Year',F.year)}${row('Source',F.source)}
@@ -478,7 +478,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     alert('Please click SEARCH first. The Quarterly Report is based on the records currently returned by SEARCH.');
     return;
   }
-  const found=searchedRecords.filter(r=>String(r[F.year]||'').trim()===y);
+  const found=[...searchedRecords];
 
   if(!found.length){
     alert('No vehicle records found for the selected POST, OWNERSHIP / SOURCE, REPORTING QUARTER, and YEAR.');
@@ -825,7 +825,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
       h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
     }
     h+='</div><div class="actions no-print">';
-    if(photoRaw) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
+    if(photoRaw) h+='<button class="secondary" type="button" onclick="window.open('+JSON.stringify(photoRaw)+',\'_blank\')">VIEW VEHICLE PICTURE</button>';
     h+='</div></div>';
 
     h+='<div><div class="summary">'+main.map(x=>{
@@ -838,6 +838,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     // has no submitted file, the existing document viewer will state that clearly.
     h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
     h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(ins)+',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
+    h+='<button class="gold" type="button" onclick="printVehicle()">PRINT VEHICLE REPORT</button>';
     h+='</div></div></div>';
 
     h+=section('VEHICLE INFORMATION',[
