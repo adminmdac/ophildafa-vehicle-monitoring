@@ -57,7 +57,7 @@ tr:hover td{background:#f8fafc}
 .detail-intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px;padding:13px 15px;border-radius:10px;background:linear-gradient(135deg,#f6f8fb,#fff);border:1px solid #e0e7ef}
 .detail-intro .vehicle-name{font-size:19px;font-weight:850;color:var(--navy);letter-spacing:.2px}
 .detail-intro .vehicle-meta{font-size:11px;color:#667085;margin-top:3px}
-.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:14px;border:1px solid #cfd9e5;border-left:5px solid var(--gold);border-radius:10px;background:#f8fafc;padding:20px 22px;min-height:150px}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:14px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:9px;padding-top:9px;border-top:1px solid #e3e8ef;font-size:12.5px;line-height:1.6;color:#344054;white-space:pre-wrap;word-break:break-word}
+.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:24px 26px;min-height:210px;width:100%}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:16px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:9px;padding-top:9px;border-top:1px solid #e3e8ef;font-size:13px;line-height:1.7;color:#344054;white-space:pre-wrap;word-break:break-word}
 .report-note{font-size:11px;color:#667085;margin-top:8px}
 .doc-modal{position:fixed;inset:0;background:rgba(4,18,39,.72);display:none;align-items:center;justify-content:center;padding:28px;z-index:9999}
 .doc-modal.show{display:flex}
@@ -211,6 +211,9 @@ document.getElementById('refreshBtn').onclick=loadLiveData;
 const post=document.getElementById('post'),source=document.getElementById('source'),quarter=document.getElementById('quarter'),year=document.getElementById('year');
 const results=document.getElementById('results'),details=document.getElementById('details'),count=document.getElementById('count');
 let selectedRecord=null;
+let searchedRecords=[];
+let searchedYear='';
+let searchedCriteria=null;
 
 function unique(f){return [...new Set(RECORDS.map(r=>r[f]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}
 function fill(s,a){a.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o)})}
@@ -304,7 +307,7 @@ function renderResults(found){
       String(val(a,F.post)).localeCompare(String(val(b,F.post)),undefined,{numeric:true}) ||
       String(val(a,F.plate)).localeCompare(String(val(b,F.plate)),undefined,{numeric:true}));
   }
-  let h='<table><thead><tr><th>POST</th><th>PLATE NUMBER</th><th>TYPE</th><th>MAKE / MODEL</th><th>SOURCE</th><th>YEAR MODEL</th><th>ODOMETER</th><th>STATUS</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>POST</th><th>PLATE NUMBER</th><th>TYPE</th><th>MAKE / MODEL</th><th>SOURCE</th><th>COLOR</th><th>ODOMETER</th><th>STATUS</th></tr></thead><tbody>';
   let currentGroup=null;
   ordered.forEach((r,i)=>{
     if(mode==='ownership'){
@@ -315,18 +318,19 @@ function renderResults(found){
       }
     }
     const idx=found.indexOf(r);
-    h+=`<tr><td>${esc(val(r,F.post))}</td><td><span class="plate" data-i="${idx}">${esc(val(r,F.plate))}</span></td><td>${esc(val(r,F.type))}</td><td>${esc(val(r,F.make))}</td><td>${esc(val(r,F.source))}</td><td>${esc(val(r,'Year Model'))}</td><td>${esc(val(r,F.odo))}</td><td>${esc(val(r,F.status))}</td></tr>`;
+    h+=`<tr><td>${esc(val(r,F.post))}</td><td><span class="plate" data-i="${idx}">${esc(val(r,F.plate))}</span></td><td>${esc(val(r,F.type))}</td><td>${esc(val(r,F.make))}</td><td>${esc(val(r,F.source))}</td><td>${esc(String(r.__COLOR__||r['Vehicle Color']||'').trim()||'—')}</td><td>${esc(val(r,F.odo))}</td><td>${esc(val(r,F.status))}</td></tr>`;
   });
   results.innerHTML=h+'</tbody></table>';
   results.querySelectorAll('.plate').forEach(e=>e.onclick=(ev)=>{ev.preventDefault();ev.stopPropagation();show(found[+e.dataset.i]);});
 }
 
 async function searchRecords(){
-  await loadLiveData();
+  // SEARCH works on the data already loaded into RECORDS.
+  // Do not reload the Google Sheet here; reloading was clearing the displayed results.
   const y=String(year.value||'').trim();
-  if(!post.value||!quarter.value||!/^\d{4}$/.test(y)){
+  if(!post.value||!quarter.value||!/^[0-9]{4}$/.test(y)){
     results.innerHTML='<div class="muted">Please select POST, REPORTING QUARTER and enter a valid 4-digit YEAR.</div>';
-    count.textContent=''; clearSelection(); return;
+    count.textContent=''; searchedRecords=[]; searchedYear=''; clearSelection(); return;
   }
   const found=RECORDS.filter(r=>{
     const postMatch=post.value==='__ALL_POSTS__'||r[F.post]===post.value;
@@ -334,25 +338,19 @@ async function searchRecords(){
     const quarterMatch=quarter.value==='__ALL_QUARTERS__'||r[F.quarter]===quarter.value;
     return postMatch&&sourceMatch&&quarterMatch&&String(r[F.year]||'').trim()===y;
   });
+  searchedRecords=[...found];
+  searchedYear=y;
+  searchedCriteria={post:post.value,source:source.value,quarter:quarter.value,year:y};
   count.textContent=found.length+' record(s)';
   if(!found.length){
     results.innerHTML='<div class="muted">No vehicle records found for the selected criteria.</div>';
     clearSelection(); return;
   }
   renderResults(found);
-};
+}
 
-document.getElementById('sortMode').addEventListener('change',async()=>{
-  await loadLiveData();
-  const y=String(year.value||'').trim();
-  if(!post.value||!quarter.value||!/^\d{4}$/.test(y)) return;
-  const found=RECORDS.filter(r=>{
-    const postMatch=post.value==='__ALL_POSTS__'||r[F.post]===post.value;
-    const sourceMatch=source.value==='__ALL_SOURCES__'||String(r[F.source]||'').trim().toUpperCase()===source.value;
-    const quarterMatch=quarter.value==='__ALL_QUARTERS__'||r[F.quarter]===quarter.value;
-    return postMatch&&sourceMatch&&quarterMatch&&String(r[F.year]||'').trim()===y;
-  });
-  if(found.length) renderResults(found);
+document.getElementById('sortMode').addEventListener('change',()=>{
+  if(searchedRecords.length) renderResults(searchedRecords);
 });
 
 function show(r){
@@ -449,19 +447,19 @@ function printVehicle(){
 }
 
 document.getElementById('quarterlyBtn').onclick=async()=>{
-  await loadLiveData();
-
-  const y=String(year.value||'').trim();
-  if(!/^\d{4}$/.test(y)){
-    alert('Enter a valid 4-digit YEAR.');
+  // Use the year already entered for the current search. If SEARCH was completed,
+  // use its stored year so the report never asks for the year again.
+  const y=String(searchedYear||year.value||'').trim();
+  if(!/^[0-9]{4}$/.test(y)){
+    alert('Please enter a valid 4-digit YEAR in the YEAR field, then click SEARCH.');
     return;
   }
 
   // The Quarterly Report follows the CURRENT SEARCH/FILTER selections:
   // POST + OWNERSHIP/SOURCE + REPORTING QUARTER + YEAR.
-  const selectedPost=post.value;
-  const selectedSource=source.value;
-  const selectedQuarter=quarter.value;
+  const selectedPost=searchedCriteria?.post ?? post.value;
+  const selectedSource=searchedCriteria?.source ?? source.value;
+  const selectedQuarter=searchedCriteria?.quarter ?? quarter.value;
 
   if(!selectedPost){
     alert('Select a POST first.');
@@ -850,7 +848,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     h+='<div class="footer">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>';
     document.getElementById('details').innerHTML=h;
     details.style.display='block';
-    document.getElementById('results').style.display='none';
+    document.getElementById('results').style.display='block';
     window.scrollTo({top:0,behavior:'smooth'});
   };
 })();
