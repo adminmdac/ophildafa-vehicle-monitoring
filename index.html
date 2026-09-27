@@ -370,12 +370,20 @@ function show(r){
     const psrc=pid ? ('https://drive.google.com/thumbnail?id='+encodeURIComponent(pid)+'&sz=w1200') : photo;
     h+='<div class="photo-image-wrap"><img class="vehicle-photo" src="'+esc(psrc)+'" alt="Vehicle Photograph" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div class=\\\'photo-placeholder\\\'>VEHICLE PHOTOGRAPH AVAILABLE<br><span>Click VIEW VEHICLE PICTURE to open the exact submitted photograph.</span></div>\';"></div>';
   } else h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
-  h+='</div><div class="actions no-print"><button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button></div></div>';
+  h+='</div><div class="actions no-print">';
+  if(photo) h+='<a class="secondary doc-open" href="'+esc(firstFileUrl(photo))+'" target="_blank" rel="noopener noreferrer">VIEW VEHICLE PICTURE</a>';
+  else h+='<button class="secondary" type="button" onclick="openDoc(\'\',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
+  h+='</div></div>';
   h+='<div><div class=\"summary\">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>'<div class=\"card\"><div class=\"k\">'+esc(x[0])+'</div><div class=\"v\">'+esc(val(r,x[1])||'—')+'</div></div>').join('')+'</div>';
-  h+='<div class=\"vehicle-status-box\"><div class=\"status-label\">VEHICLE STATUS</div><div class=\"status-value\">'+esc(val(r,F.status)||'—')+'</div><div class=\"status-detail\">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
-  h+='<div class=\"actions no-print\"><button onclick=\"openDoc('+JSON.stringify(String(r.__REG_DOC__||'').trim())+',\'REGISTRATION DOCUMENT\')\">VIEW REGISTRATION DOCUMENT</button>';
-  h+='<button onclick=\"openDoc('+JSON.stringify(String(r.__INS_DOC__||'').trim())+',\'INSURANCE DOCUMENT\')\">VIEW INSURANCE DOCUMENT</button>';
-  h+='<button class=\"gold\" onclick=\"printVehicle()\">PRINT VEHICLE REPORT</button></div></div></div>';
+  h+='<div class=\"vehicle-status-box\"><div class=\"status-label\">VEHICLE STATUS</div><div class=\"status-value\">'+esc(val(r,F.status)||'—')+'</div><div class=\"status-detail\">'+esc(val(r,'Briefly describe the current condition/deficiency.')||val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
+  h+='<div class="actions no-print">';
+  const regLink=firstFileUrl(String(r.__REG_DOC__||'').trim());
+  const insLink=firstFileUrl(String(r.__INS_DOC__||'').trim());
+  if(regLink) h+='<a class="secondary doc-open" href="'+esc(regLink)+'" target="_blank" rel="noopener noreferrer">VIEW REGISTRATION DOCUMENT</a>';
+  else h+='<button type="button" onclick="openDoc(\'\',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
+  if(insLink) h+='<a class="secondary doc-open" href="'+esc(insLink)+'" target="_blank" rel="noopener noreferrer">VIEW INSURANCE DOCUMENT</a>';
+  else h+='<button type="button" onclick="openDoc(\'\',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
+  h+='<button class="gold" type="button" onclick="printVehicle()">PRINT VEHICLE REPORT</button></div></div></div>';
 
   h+=section('REGISTRATION',[
     ['Registration Status','Registration Status'],['Date of Registration','Date of Registration'],
