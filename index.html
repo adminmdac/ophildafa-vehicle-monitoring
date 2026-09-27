@@ -52,7 +52,7 @@ tr:hover td{background:#f8fafc}
 .actions button{width:auto;min-width:170px}
 .vehicle-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start}
 .photo-box{border:1px solid #d6e0ea;border-radius:12px;background:#f5f8fb;overflow:hidden;min-height:235px;box-shadow:0 4px 14px rgba(9,37,74,.06)}
-.photo-box img{display:block;width:100%;height:235px;object-fit:cover}
+.photo-box img{display:block;width:100%;height:235px;object-fit:cover}.photo-frame{display:block;width:100%;height:235px;border:0;background:#f5f8fb}.photo-fallback{padding:8px;text-align:center;background:#fff;border-top:1px solid #dfe5ec}.photo-fallback a{font-size:11px;font-weight:800;color:#09254a;text-decoration:none}
 .photo-placeholder{height:235px;display:flex;align-items:center;justify-content:center;text-align:center;color:#98a2b3;font-size:11px;font-weight:700;padding:20px}
 .detail-intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px;padding:13px 15px;border-radius:10px;background:linear-gradient(135deg,#f6f8fb,#fff);border:1px solid #e0e7ef}
 .detail-intro .vehicle-name{font-size:19px;font-weight:850;color:var(--navy);letter-spacing:.2px}
@@ -83,9 +83,6 @@ tr:hover td{background:#f8fafc}
 .doc-actions{padding:12px 14px}.doc-open{display:inline-block;background:#09254a;color:#fff;text-decoration:none;padding:10px 14px;border-radius:5px;font-weight:700;font-size:12px}.doc-iframe{display:block;width:100%;height:620px;border:0;background:#f4f6f8}.doc-note{padding:8px 14px;font-size:11px;color:#667085;border-top:1px solid #dfe5ec}
 
 .connection{margin:10px 0;padding:9px 12px;border-radius:7px;font-size:12px;border:1px solid var(--line);background:#fff}.connection.ok{border-color:#8cc7a1}.connection.bad{border-color:#e2a1a1}.connection small{font-size:11px}
-</style><style>
-.photo-image-wrap{width:100%;height:100%;min-height:380px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:14px;background:#f5f7fa}
-.photo-image-wrap .vehicle-photo{display:block;width:100%;height:100%;max-height:520px;object-fit:contain}
 </style>
 </head>
 <body>
@@ -158,7 +155,13 @@ function parseCSV(text){
   if(!rows.length)return [];
   const headers=rows[0].map(h=>String(h).trim());
   return rows.slice(1).filter(r=>r.some(v=>String(v||'').trim()!=='')).map(r=>{
-    const o={}; headers.forEach((h,i)=>o[h]=String(r[i]??'').trim()); return o;
+    const o={}; headers.forEach((h,i)=>o[h]=String(r[i]??'').trim());
+    // Exact Form Responses 1 columns: T=Registration Document, AB=Insurance Document, AV=Vehicle Photograph, AW=Vehicle Color.
+    o.__REG_DOC__ = String(r[19]??'').trim();
+    o.__INS_DOC__ = String(r[27]??'').trim();
+    o.__PHOTO__ = String(r[47]??'').trim();
+    o.__COLOR__ = String(r[48]??'').trim();
+    return o;
   });
 }
 
@@ -249,41 +252,35 @@ function driveFileId(url){
   m=s.match(/\/d\/([^/?#]+)/i); if(m) return m[1];
   m=s.match(/[-\w]{25,}/); return m?m[0]:'';
 }
-function firstFileUrl(value){ return fileUrls(value)[0]||''; }
-function driveOpen(url){
-  const raw=firstFileUrl(url), id=driveFileId(raw);
-  if(!raw) return '';
-  // Google Form uploads commonly arrive as https://drive.google.com/open?id=FILE_ID.
-  // Preserve that original URL because it is the most reliable viewer route.
-  return raw;
-}
+function firstFileUrl(value){return fileUrls(value)[0]||'';}
 function drivePreview(url){
-  const raw=firstFileUrl(url), id=driveFileId(raw);
-  return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/view' : raw;
+  const id=driveFileId(url);
+  return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview' : firstFileUrl(url);
 }
-function driveImage(url){
-  // Do not use Drive thumbnail/uc URLs for the main viewer; they can be blocked.
-  // The exact Form-upload URL is opened directly instead.
-  return driveOpen(url);
+function driveThumbnail(url){
+  const id=driveFileId(url);
+  return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1200' : firstFileUrl(url);
 }
-function firstFileValue(r, keys){
-  for(const k of keys){ const v=val(r,k); if(String(v||'').trim()) return v; }
+function driveOpen(url){return firstFileUrl(url);}
+function exactFile(r,prop,headers){
+  const direct=String(r[prop]||'').trim();
+  if(direct) return direct;
+  for(const k of headers){const v=String(r[k]||'').trim();if(v)return v;}
   return '';
 }
 function openDoc(url,title='DOCUMENT'){
-  const raw=firstFileUrl(url);
-  const modal=document.getElementById('docModal'),body=document.getElementById('docBody');
+  const raw=firstFileUrl(url), modal=document.getElementById('docModal'), body=document.getElementById('docBody');
   document.getElementById('docTitle').textContent=title;
   if(!raw){
-    body.innerHTML='<div class="doc-fallback"><strong>NO SUBMITTED '+esc(title)+'</strong><p>No '+esc(title.toLowerCase())+' was submitted with this historical vehicle record.</p></div>';
+    body.innerHTML='<div class="doc-empty"><div class="doc-empty-card"><div class="icon">!</div><h3>NO SUBMITTED '+esc(title)+'</h3><p>No '+esc(title.toLowerCase())+' was submitted with this historical vehicle record.</p></div></div>';
     modal.classList.add('show'); return;
   }
-  const link=driveOpen(raw);
-  const preview=drivePreview(raw);
-  body.innerHTML='<div class="doc-actions"><a class="doc-open" href="'+esc(link)+'" target="_blank" rel="noopener noreferrer">OPEN '+esc(title)+' IN GOOGLE DRIVE</a></div><div class="doc-fallback"><strong>DOCUMENT READY</strong><p>Use the button above to open the exact file submitted with this historical vehicle record.</p><p class="doc-note">Google Drive may block embedded previews inside this website. Opening the original Google Drive link avoids that restriction.</p></div>';
+  const preview=drivePreview(raw), exact=driveOpen(raw);
+  body.innerHTML='<div class="doc-actions"><a class="doc-open-link" href="'+esc(exact)+'" target="_blank" rel="noopener noreferrer">OPEN EXACT FILE</a></div><iframe class="doc-iframe" src="'+esc(preview)+'" title="'+esc(title)+'"></iframe>';
   modal.classList.add('show');
 }
-
+function closeDoc(){document.getElementById('docModal').classList.remove('show');document.getElementById('docBody').innerHTML='';}
+document.getElementById('docModal').addEventListener('click',e=>{if(e.target.id==='docModal')closeDoc();});
 function firstAvailable(r,keys){for(const k of keys)if(r[k])return r[k];return ''}
 function section(title,rows){
   return '<div class="detail-section"><h3>'+esc(title)+'</h3><div class="detail-grid">'+
@@ -352,53 +349,42 @@ document.getElementById('sortMode').addEventListener('change',async()=>{
 
 function show(r){
   selectedRecord=r;
-  const photo=String(r.__PHOTO__||'').trim();
+  const photo=exactFile(r,'__PHOTO__',['Vehicle Photograph','Vehicle Photo']);
+  const reg=exactFile(r,'__REG_DOC__',['Registration Document']);
+  const ins=exactFile(r,'__INS_DOC__',['Insurance Document']);
+  const color=String(r.__COLOR__||r['Vehicle Color']||'').trim();
   const main=[
     ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
-    ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-    ['Plate Number',F.plate],['Color','__COLOR__'],['Odometer',F.odo],['Vehicle Status',F.status]
+    ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],
+    ['Color',null],['Odometer',F.odo]
   ];
-  let h='<div class=\"detail-intro\"><div><div class=\"vehicle-name\">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class=\"vehicle-meta\">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
+  let h='<div class="detail-intro"><div><div class="vehicle-name">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class="vehicle-meta">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
   h+='<div class="vehicle-layout"><div><div class="photo-box">';
   if(photo){
-    const pid=driveFileId(photo);
-    const psrc=pid ? ('https://drive.google.com/thumbnail?id='+encodeURIComponent(pid)+'&sz=w1200') : photo;
-    h+='<div class="photo-image-wrap"><img class="vehicle-photo" src="'+esc(psrc)+'" alt="Vehicle Photograph" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div class=\\\'photo-placeholder\\\'>VEHICLE PHOTOGRAPH AVAILABLE<br><span>Click VIEW VEHICLE PICTURE to open the exact submitted photograph.</span></div>\';"></div>';
-  } else h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
+    const preview=drivePreview(photo), thumb=driveThumbnail(photo), exact=driveOpen(photo);
+    h+='<iframe class="photo-frame" src="'+esc(preview)+'" title="Vehicle Photograph"></iframe>';
+    h+='<div class="photo-fallback"><a href="'+esc(exact)+'" target="_blank" rel="noopener noreferrer">OPEN EXACT VEHICLE PICTURE</a></div>';
+  }else{
+    h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
+  }
   h+='</div><div class="actions no-print"><button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button></div></div>';
-  h+='<div><div class=\"summary\">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>'<div class=\"card\"><div class=\"k\">'+esc(x[0])+'</div><div class=\"v\">'+esc(val(r,x[1])||'—')+'</div></div>').join('')+'</div>';
-  h+='<div class=\"vehicle-status-box\"><div class=\"status-label\">VEHICLE STATUS</div><div class=\"status-value\">'+esc(val(r,F.status)||'—')+'</div><div class=\"status-detail\">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
-  h+='<div class=\"actions no-print\"><button onclick=\"openDoc('+JSON.stringify(String(r.__REG_DOC__||'').trim())+',\'REGISTRATION DOCUMENT\')\">VIEW REGISTRATION DOCUMENT</button>';
-  h+='<button onclick=\"openDoc('+JSON.stringify(String(r.__INS_DOC__||'').trim())+',\'INSURANCE DOCUMENT\')\">VIEW INSURANCE DOCUMENT</button>';
-  h+='<button class=\"gold\" onclick=\"printVehicle()\">PRINT VEHICLE REPORT</button></div></div></div>';
-
+  h+='<div><div class="summary">'+main.map(x=>{
+    const v=x[0]==='Color'?color:val(r,x[1]);
+    return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
+  }).join('')+'</div>';
+  h+='<div class="vehicle-status-box"><div class="status-label">VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div><div class="status-detail">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
+  h+='<div class="actions no-print"><button onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button><button onclick="openDoc('+JSON.stringify(ins)+',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button><button class="gold" onclick="printVehicle()">PRINT VEHICLE REPORT</button></div></div></div>';
   h+=section('REGISTRATION',[
-    ['Registration Status','Registration Status'],['Date of Registration','Date of Registration'],
-    ['Registration Expiry Date','Registration Expiry Date'],['Registration Amount','Registration Amount'],['Registration Remarks','Remarks']
+    ['Registration Status','Registration Status'],['Date of Registration','Date of Registration'],['Registration Expiry Date','Registration Expiry Date'],['Registration Amount','Registration Amount'],['Registration Remarks','Remarks']
   ]);
   h+=section('MAINTENANCE / PMS',[
-    ['Overall Vehicle Condition','Overall Vehicle Condition'],['Condition / Deficiency','Describe the vehicle’s current operational status, condition, or deficiency.'],
-    ['PMS / Change Oil Status','PMS / Change Oil Status'],['Last PMS / Change Oil','Date of Last PMS / Change Oil'],
-    ['Next PMS / Change Oil Due','Next PMS / Change Oil Due'],['Quarterly PMS Fund Allocation','Quarterly PMS Fund Allocation'],
-    ['PMS Remarks','Remarks_1'],['Battery Status','Battery Status'],['Battery Last Replaced','Date Battery Last Replaced'],
-    ['Battery Replacement Due','Battery Replacement Due / Recommended Date'],['Battery Remarks','Remarks_2'],
-    ['Tire Status','Tire Status'],['Tire Last Replaced','Date Last Replaced'],
-    ['Tire Replacement Due','Tire Replacement Due / Recommended Date'],['Tire Remarks','Remarks_3']
+    ['Overall Vehicle Condition','Overall Vehicle Condition'],['Condition / Deficiency','Describe the vehicle’s current operational status, condition, or deficiency'],['PMS / Change Oil Status','PMS / Change Oil Status'],['Last PMS / Change Oil','Date of Last PMS / Change Oil'],['Next PMS / Change Oil Due','Next PMS / Change Oil Due'],['Quarterly PMS Fund Allocation','Quarterly PMS Fund Allocation'],['PMS Remarks','Remarks_1'],['Battery Status','Battery Status'],['Battery Last Replaced','Date Battery Last Replaced'],['Battery Replacement Due','Battery Replacement Due / Recommended Date'],['Battery Remarks','Remarks_2'],['Tire Status','Tire Status'],['Tire Last Replaced','Date Last Replaced'],['Tire Replacement Due','Tire Replacement Due / Recommended Date'],['Tire Remarks','Remarks_3']
   ]);
   h+=section('INSURANCE',[
-    ['Insurance Status','Insurance Status'],['Insurance Provider','Insurance Provider'],
-    ['Policy / Certificate Number','Policy / Certificate Number'],['Date Insured','Date Insured'],
-    ['Renewal / Expiry Date','Date Renewal'],['Insurance Coverage','Insurance Coverage'],
-    ['Premium / Amount Paid','Insurance Premium / Amount Paid']
+    ['Insurance Status','Insurance Status'],['Insurance Provider','Insurance Provider'],['Policy / Certificate Number','Policy / Certificate Number'],['Date Insured','Date Insured'],['Renewal / Expiry Date','Date Renewal'],['Insurance Coverage','Insurance Coverage'],['Premium / Amount Paid','Insurance Premium / Amount Paid']
   ]);
   h+=section('VEHICLE READINESS',[
-    ['Registration Document Available','Is the vehicle registration document available?'],
-    ['Insurance Document Available','Is the vehicle insurance document available?'],
-    ['Basic Vehicle Tools Available','Are basic vehicle tools available in the vehicle?'],
-    ['Maintenance Logbook Available','Is the vehicle maintenance logbook available?'],
-    ['Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?'],
-    ['Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?'],
-    ['Deficiency Details','Briefly describe the deficiency.']
+    ['Registration Document Available','Is the vehicle registration document available?'],['Insurance Document Available','Is the vehicle insurance document available?'],['Basic Vehicle Tools Available','Are basic vehicle tools available in the vehicle?'],['Maintenance Logbook Available','Is the vehicle maintenance logbook available?'],['Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?'],['Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?'],['Deficiency Details','Briefly describe the deficiency.']
   ]);
   details.innerHTML=h;
 }
@@ -410,7 +396,7 @@ document.getElementById('clearBtn').onclick=clearSelection;
 
 function printVehicle(){
   if(!selectedRecord){alert('Select a vehicle record first.');return}
-  const r=selectedRecord, photo=firstFileValue(r,['Vehicle Photograph','Vehicle Photo','Upload a recent three-quarter view photograph of the vehicle, showing the front, one side, and roof.','Vehicle Photograph / Photo']);
+  const r=selectedRecord, photo=exactFile(r,'__PHOTO__',['Vehicle Photograph','Vehicle Photo']);
   const win=window.open('','_blank');
   const row=(label,key)=>`<tr><td>${esc(label)}</td><td>${esc(val(r,key)||'—')}</td></tr>`;
   win.document.write(`<!doctype html><html><head><title>Vehicle Report - ${esc(val(r,F.plate))}</title><style>
@@ -428,808 +414,44 @@ function printVehicle(){
   <h2>VEHICLE INFORMATION</h2><table>
   ${row('Post',F.post)}${row('Reporting Quarter',F.quarter)}${row('Year',F.year)}${row('Source',F.source)}
   ${row('Vehicle Type',F.type)}${row('Fuel Type','Fuel Type')}${row('Make / Model',F.make)}${row('Plate Number',F.plate)}
-  ${row('Year Model','Year Model')}${row('Odometer',F.odo)}${row('Vehicle Status',F.status)}
+  ${row('Color','__COLOR__')}${row('Odometer',F.odo)}${row('Vehicle Status',F.status)}
   </table><div class="clear"></div>
   <h2>REGISTRATION</h2><table>${row('Registration Status','Registration Status')}${row('Date of Registration','Date of Registration')}${row('Registration Expiry Date','Registration Expiry Date')}${row('Registration Amount','Registration Amount')}${row('Remarks','Remarks')}</table>
   <h2>MAINTENANCE / PMS</h2><table>${row('PMS / Change Oil Status','PMS / Change Oil Status')}${row('Last PMS / Change Oil','Date of Last PMS / Change Oil')}${row('Next PMS / Change Oil Due','Next PMS / Change Oil Due')}${row('Quarterly PMS Fund Allocation','Quarterly PMS Fund Allocation')}${row('PMS Remarks','Remarks_1')}${row('Battery Status','Battery Status')}${row('Battery Last Replaced','Date Battery Last Replaced')}${row('Battery Replacement Due','Battery Replacement Due / Recommended Date')}${row('Battery Remarks','Remarks_2')}${row('Tire Status','Tire Status')}${row('Tire Last Replaced','Date Last Replaced')}${row('Tire Replacement Due','Tire Replacement Due / Recommended Date')}${row('Tire Remarks','Remarks_3')}</table>
   <h2>INSURANCE</h2><table>${row('Insurance Status','Insurance Status')}${row('Provider','Insurance Provider')}${row('Policy / Certificate Number','Policy / Certificate Number')}${row('Date Insured','Date Insured')}${row('Renewal / Expiry','Date Renewal')}${row('Coverage','Insurance Coverage')}${row('Premium / Amount Paid','Insurance Premium / Amount Paid')}</table>
   <h2>VEHICLE READINESS</h2><table>${row('Registration Document Available','Is the vehicle registration document available?')}${row('Insurance Document Available','Is the vehicle insurance document available?')}${row('Basic Tools Available','Are basic vehicle tools available in the vehicle?')}${row('Maintenance Logbook Available','Is the vehicle maintenance logbook available?')}${row('Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?')}${row('Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?')}${row('Deficiency Details','Briefly describe the deficiency.')}</table>
   <div class="footer">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>
-  
-<script>
-/* OPhilDAFA file-field fix: exact Form Responses 1 columns
-   T  = Registration Document
-   AB = Insurance Document
-   AV = Vehicle Photograph
-   AW = Vehicle Color
-*/
-(function(){
-  const _oldParseCSV = window.parseCSV;
-  const _oldNormalizeRows = window.normalizeRows;
-
-  function parseCSVExact(text){
-    text=String(text||'').replace(/^\uFEFF/,'');
-    const rows=[]; let row=[],cell='',q=false;
-    for(let i=0;i<text.length;i++){
-      const c=text[i], n=text[i+1];
-      if(q){
-        if(c==='"' && n==='"'){cell+='"';i++;}
-        else if(c==='"') q=false;
-        else cell+=c;
-      }else{
-        if(c==='"') q=true;
-        else if(c===','){row.push(cell);cell='';}
-        else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
-        else if(c!=='\r') cell+=c;
-      }
-    }
-    if(cell!=='' || row.length){row.push(cell);rows.push(row);}
-    if(!rows.length)return [];
-    const headers=rows[0].map(h=>String(h).trim());
-    return rows.slice(1).filter(r=>r.some(v=>String(v||'').trim()!=='')).map(r=>{
-      const o={};
-      headers.forEach((h,i)=>o[h]=String(r[i]??'').trim());
-      // Exact column-position fallbacks, zero-based:
-      o.__REG_DOC__ = String(r[19]??'').trim(); // T
-      o.__INS_DOC__ = String(r[27]??'').trim(); // AB
-      o.__PHOTO__   = String(r[47]??'').trim(); // AV
-      o.__COLOR__   = String(r[48]??'').trim(); // AW
-      return o;
-    });
-  }
-
-  function normalizeExact(rows){
-    return rows.map(r=>{
-      const o={...r};
-      o[F.quarter]=String(o[F.quarter]||'').trim();
-      o[F.year]=String(o[F.year]||'').trim().replace(/\.0$/,'');
-      return o;
-    }).filter(r=>r[F.post]||r[F.plate]||r[F.make]);
-  }
-
-  window.parseCSV = parseCSVExact;
-  window.normalizeRows = normalizeExact;
-
-  const _oldLoad = window.loadLiveData;
-  window.loadLiveData = async function(){
-    setStatus(false,'<strong>CONNECTING TO GOOGLE SHEETS…</strong> — Reading published Form Responses 1.');
-    RECORDS=[]; selectedRecord=null; clearSelection();
-    try{
-      const u=LIVE_CSV_URL+'&_='+Date.now();
-      const response=await fetch(u,{method:'GET',cache:'no-store'});
-      if(!response.ok) throw new Error('HTTP '+response.status);
-      const csv=await response.text();
-      const rows=normalizeExact(parseCSVExact(csv));
-      if(!rows.length) throw new Error('The published CSV returned no response rows.');
-      RECORDS=rows;
-      setStatus(true,'<strong>LIVE GOOGLE SHEETS: CONNECTED</strong> — '+RECORDS.length+' Form Responses loaded from Form Responses 1.');
-      refreshFilters();
-      return true;
-    }catch(e){
-      RECORDS=[];
-      setStatus(false,'<strong>LIVE GOOGLE SHEETS: NOT CONNECTED</strong> — '+esc(e.message||String(e)));
-      refreshFilters();
-      return false;
-    }
-  };
-
-  function exactFile(r, prop, headerNames){
-    const direct = String(r[prop]||'').trim();
-    if(direct) return direct;
-    for(const k of headerNames){
-      const v=String(r[k]||'').trim();
-      if(v) return v;
-    }
-    return '';
-  }
-
-  window.show = function(r){
-    selectedRecord=r;
-
-    const photo=exactFile(r,'__PHOTO__',['Vehicle Photograph','Vehicle Photo']);
-    const reg=exactFile(r,'__REG_DOC__',['Registration Document']);
-    const ins=exactFile(r,'__INS_DOC__',['Insurance Document']);
-    const color=String(r.__COLOR__||r['Vehicle Color']||'').trim();
-
-    const main=[
-      ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
-      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-      ['Plate Number',F.plate],['Color','__COLOR__'],['Odometer',F.odo],['Vehicle Status',F.status]
-    ];
-
-    let h='<div class="detail-intro"><div><div class="vehicle-name">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class="vehicle-meta">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
-
-    h+='<div class="vehicle-layout"><div><div class="photo-box">';
-    if(photo){
-      h+='<div class="photo-placeholder"><strong>VEHICLE PHOTOGRAPH</strong><br><span>Photograph submitted for this historical record.</span></div>';
-    } else {
-      h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
-    }
-    h+='</div><div class="actions no-print">';
-    h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
-    h+='</div></div>';
-
-    h+='<div><div class="summary">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>{
-      const v=x[0]==='Vehicle Color'?color:val(r,x[1]);
-      return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
-    }).join('')+'</div>';
-
-    h+='<div class="vehicle-status-box"><div class="status-label">VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div><div class="status-detail">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
-
-    h+='<div class="actions no-print">';
-    h+='<button type="button" onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
-    h+='<button type="button" onclick="openDoc('+JSON.stringify(ins)+',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
-    h+='<button class="gold" onclick="printVehicle()">PRINT VEHICLE REPORT</button></div></div></div>';
-
-    h+=section('REGISTRATION',[
-      ['Registration Status','Registration Status'],['Registration Expiry Date','Registration Expiry Date'],
-      ['Registration Amount','Registration Amount']
-    ]);
-    h+=section('MAINTENANCE / PMS',[
-      ['Overall Vehicle Condition','Overall Vehicle Condition'],
-      ['Condition / Deficiency','Describe the vehicle’s current operational status, condition, or deficiency.'],
-      ['PMS / Change Oil Status','PMS / Change Oil Status'],['Last PMS / Change Oil','Date of Last PMS / Change Oil'],
-      ['Next PMS / Change Oil Due','Next PMS / Change Oil Due'],['Battery Status','Battery Status'],
-      ['Battery Last Replaced','Date Battery Last Replaced'],
-      ['Battery Replacement Due','Battery Replacement Due / Recommended Date'],
-      ['Tire Status','Tire Status'],['Tire Last Replaced','Date Last Replaced'],
-      ['Tire Replacement Due','Tire Replacement Due / Recommended Date']
-    ]);
-    h+=section('INSURANCE',[
-      ['Insurance Status','Insurance Status'],['Insurance Provider','Insurance Provider'],
-      ['Policy / Certificate Number','Policy / Certificate Number'],
-      ['Date Insured','Date Insured'],['Renewal / Expiry Date','Date Renewal'],
-      ['Insurance Coverage','Insurance Coverage'],['Premium / Amount Paid','Insurance Premium / Amount Paid']
-    ]);
-    h+=section('VEHICLE READINESS',[
-      ['Registration Document Available','Is the vehicle registration document available?'],
-      ['Insurance Document Available','Is the vehicle insurance document available?'],
-      ['Basic Vehicle Tools Available','Are basic vehicle tools available in the vehicle?'],
-      ['Maintenance Logbook Available','Is the vehicle maintenance logbook available?'],
-      ['Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?'],
-      ['Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?'],
-      ['Deficiency Details','Briefly describe the deficiency.']
-    ]);
-    details.innerHTML=h;
-  };
-
-  window.openDoc = function(url,title){
-    const raw=String(url||'').trim();
-    if(!raw){
-      alert('NO SUBMITTED '+title+'.');
-      return;
-    }
-    // Open the exact Google Form/Drive URL from the selected historical row.
-    window.open(raw,'_blank','noopener,noreferrer');
-  };
-
-  // Initial live load using the exact-column parser.
-  loadLiveData();
-})();
-</script>
-
-
-<script>
-/* FINAL Google Drive viewer fix
-   Uses the exact historical row values from T / AB / AV.
-   Photo: Drive thumbnail endpoint.
-   Documents: Drive preview iframe + exact Drive link.
-*/
-(function(){
-  function exactFileFinal(r, prop, names){
-    const direct=String(r && r[prop] || '').trim();
-    if(direct) return direct;
-    for(const n of names){ const v=String(r && r[n] || '').trim(); if(v) return v; }
-    return '';
-  }
-  function fileIdFinal(url){
-    const s=String(url||'').trim();
-    if(!s) return '';
-    let m=s.match(/[?&]id=([^&#]+)/i); if(m) return decodeURIComponent(m[1]);
-    m=s.match(/\/file\/d\/([^/?#]+)/i); if(m) return m[1];
-    m=s.match(/\/d\/([^/?#]+)/i); if(m) return m[1];
-    m=s.match(/[-\w]{25,}/); return m?m[0]:'';
-  }
-  function rawFinal(url){ return firstFileUrl(url); }
-  function thumbFinal(url){
-    const id=fileIdFinal(url); return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1200' : '';
-  }
-  function previewFinal(url){
-    const id=fileIdFinal(url); return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview' : '';
-  }
-
-  window.openDoc=function(url,title='DOCUMENT'){
-    const raw=rawFinal(url), id=fileIdFinal(raw);
-    const modal=document.getElementById('docModal'), body=document.getElementById('docBody');
-    document.getElementById('docTitle').textContent=title;
-    if(!raw || !id){
-      body.innerHTML='<div class="doc-fallback"><strong>NO SUBMITTED '+esc(title)+'</strong><p>No file was submitted with this historical vehicle record.</p></div>';
-      modal.classList.add('show'); return;
-    }
-    const preview=previewFinal(raw);
-    body.innerHTML=
-      '<div class="doc-actions" style="margin-bottom:12px">'+
-      '<a class="doc-open" href="'+esc(raw)+'" target="_blank" rel="noopener noreferrer">OPEN EXACT FILE IN GOOGLE DRIVE</a>'+
-      '</div>'+
-      '<iframe src="'+esc(preview)+'" title="'+esc(title)+'" style="width:100%;height:70vh;border:1px solid #d7dde5;border-radius:8px;background:#fff" allow="autoplay"></iframe>'+
-      '<div class="doc-fallback" style="margin-top:10px"><p class="doc-note">This is the exact file attached to the selected historical response.</p></div>';
-    modal.classList.add('show');
-  };
-
-  window.show=function(r){
-    selectedRecord=r;
-    const photo=exactFileFinal(r,'__PHOTO__',['Vehicle Photograph','Vehicle Photo']);
-    const reg=exactFileFinal(r,'__REG_DOC__',['Registration Document']);
-    const ins=exactFileFinal(r,'__INS_DOC__',['Insurance Document']);
-    const color=String(r.__COLOR__||r['Vehicle Color']||'').trim();
-    const photoRaw=rawFinal(photo), photoSrc=thumbFinal(photoRaw);
-
-    const main=[
-      ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
-      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-      ['Plate Number',F.plate],['Color','__COLOR__'],['Odometer',F.odo],['Vehicle Status',F.status]
-    ];
-
-    let h='<div class="detail-intro"><div><div class="vehicle-name">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class="vehicle-meta">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
-    h+='<div class="vehicle-layout"><div><div class="photo-box" style="min-height:320px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f5f7fa;border-radius:10px">';
-    if(photoSrc){
-      h+='<img src="'+esc(photoSrc)+'" alt="Vehicle Photograph" style="display:block;width:100%;height:320px;object-fit:contain;cursor:pointer" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')" onerror="this.onerror=null;this.src='+JSON.stringify(photoRaw)+';">';
-    } else {
-      h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
-    }
-    h+='</div><div class="actions no-print">';
-    if(photoRaw) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
-    h+='</div></div>';
-
-    h+='<div><div class="summary">'+main.map(x=>{
-      const v=x[0]==='Vehicle Color'?color:val(r,x[1]);
-      return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
-    }).join('')+'</div></div></div>';
-
-    h+='<div class="actions no-print" style="margin-top:18px">';
-    if(reg) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
-    if(ins) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(ins)+',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
-    h+='</div>';
-
-    h+=section('VEHICLE INFORMATION',[
-      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],['Color','__COLOR__'],['Current Odometer Reading (km)',F.odo],['Current Vehicle Status',F.status]
-    ]);
-    h+=section('REGISTRATION',[
-      ['Registration Document Available','Is the vehicle registration document available?'],['Registration Number','Registration Number'],['Registration Expiry','Registration Expiry'],['Registration Remarks','Registration Remarks']
-    ]);
-    h+=section('MAINTENANCE / PMS',[
-      ['PMS / Change Oil Status','PMS / Change Oil Status'],['Last PMS / Change Oil','Date of Last PMS / Change Oil'],['Next PMS / Change Oil Due','Next PMS / Change Oil Due'],['Quarterly PMS Fund Allocation','Quarterly PMS Fund Allocation'],['PMS Remarks','Remarks_1'],['Battery Status','Battery Status'],['Battery Last Replaced','Date Battery Last Replaced'],['Battery Replacement Due','Battery Replacement Due / Recommended Date'],['Battery Remarks','Remarks_2'],['Tire Status','Tire Status'],['Tire Last Replaced','Date Last Replaced'],['Tire Replacement Due','Tire Replacement Due / Recommended Date'],['Tire Remarks','Remarks_3']
-    ]);
-    h+=section('INSURANCE',[
-      ['Insurance Status','Insurance Status'],['Provider','Insurance Provider'],['Policy / Certificate Number','Policy / Certificate Number'],['Date Insured','Date Insured'],['Renewal / Expiry','Date Renewal'],['Coverage','Insurance Coverage'],['Premium / Amount Paid','Insurance Premium / Amount Paid']
-    ]);
-    h+=section('VEHICLE READINESS',[
-      ['Registration Document Available','Is the vehicle registration document available?'],['Insurance Document Available','Is the vehicle insurance document available?'],['Basic Tools Available','Are basic vehicle tools available in the vehicle?'],['Maintenance Logbook Available','Is the vehicle maintenance logbook available?'],['Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?'],['Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?'],['Deficiency Details','Briefly describe the deficiency.']
-    ]);
-    h+='<div class="footer">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>';
-    detail.innerHTML=h;
-    detail.style.display='block';
-    document.getElementById('results').style.display='none';
-    window.scrollTo({top:0,behavior:'smooth'});
-  };
-})();
-</script>
-
-</body></html>`);
+  </body></html>`);
   win.document.close(); setTimeout(()=>win.print(),500);
 }
 
 document.getElementById('quarterlyBtn').onclick=async()=>{
   await loadLiveData();
-
   const y=String(year.value||'').trim();
-  if(!/^\\d{4}$/.test(y)){
-    alert('Enter a valid 4-digit YEAR.');
-    return;
-  }
-
-  // The Quarterly Report follows the CURRENT SEARCH/FILTER selections:
-  // POST + OWNERSHIP/SOURCE + REPORTING QUARTER + YEAR.
-  const selectedPost=post.value;
-  const selectedSource=source.value;
-  const selectedQuarter=quarter.value;
-
-  if(!selectedPost){
-    alert('Select a POST first.');
-    return;
-  }
-
-  if(!selectedQuarter){
-    alert('Select REPORTING QUARTER first.');
-    return;
-  }
-
+  if(!/^\d{4}$/.test(y)){alert('Enter a valid 4-digit YEAR.');return;}
   const found=RECORDS.filter(r=>{
-    const postMatch=selectedPost==='__ALL_POSTS__'||String(r[F.post]||'').trim()===selectedPost;
-    const sourceMatch=selectedSource==='__ALL_SOURCES__'||String(r[F.source]||'').trim().toUpperCase()===String(selectedSource).trim().toUpperCase();
-    const quarterMatch=selectedQuarter==='__ALL_QUARTERS__'||String(r[F.quarter]||'').trim()===selectedQuarter;
-    const yearMatch=String(r[F.year]||'').trim()===y;
-    return postMatch && sourceMatch && quarterMatch && yearMatch;
+    const postMatch=post.value==='__ALL_POSTS__'||r[F.post]===post.value;
+    const sourceMatch=source.value==='__ALL_SOURCES__'||String(r[F.source]||'').trim().toUpperCase()===String(source.value||'').trim().toUpperCase();
+    const quarterMatch=quarter.value==='__ALL_QUARTERS__'||r[F.quarter]===quarter.value;
+    return postMatch&&sourceMatch&&quarterMatch&&String(r[F.year]||'').trim()===y;
   });
-
-  if(!found.length){
-    alert('No vehicle records found for the selected POST, OWNERSHIP / SOURCE, REPORTING QUARTER, and YEAR.');
-    return;
-  }
-
-  const groups={};
-  found.forEach(r=>{
-    const p=String(r[F.post]||'UNSPECIFIED');
-    (groups[p]??=[]).push(r);
-  });
-
-  const win=window.open('','_blank');
+  if(!found.length){alert('No vehicle records found for the selected Post, Source, Reporting Quarter, and Year.');return;}
+  const groups={}; found.forEach(r=>(groups[r[F.post]]??=[]).push(r));
+  const postLabel=post.value==='__ALL_POSTS__'?'ALL OPHILDAFA POSTS':post.value;
+  const sourceLabel=source.value==='__ALL_SOURCES__'?'ALL SOURCES':source.value;
+  const quarterLabel=quarter.value==='__ALL_QUARTERS__'?'ALL QUARTERS':quarter.value;
   let body='';
-
   Object.keys(groups).sort().forEach(p=>{
-    body+=`<h2>${esc(p)}</h2>
-    <table><thead><tr>
-      <th>PLATE</th><th>SOURCE</th><th>TYPE</th><th>MAKE / MODEL</th>
-      <th>COLOR</th><th>YEAR</th><th>ODOMETER</th><th>STATUS</th>
-      <th>REGISTRATION</th><th>INSURANCE</th><th>PMS</th><th>BATTERY</th><th>TIRES</th><th>READINESS</th>
-    </tr></thead><tbody>`;
-
+    body+='<h2>'+esc(p)+'</h2><table><thead><tr><th>PLATE</th><th>TYPE</th><th>MAKE / MODEL</th><th>COLOR</th><th>YEAR</th><th>ODOMETER</th><th>STATUS</th><th>REGISTRATION</th><th>INSURANCE</th><th>PMS</th><th>BATTERY</th><th>TIRES</th><th>READINESS</th></tr></thead><tbody>';
     groups[p].forEach(r=>{
-      const readiness=[
-        r['Is the vehicle registration document available?'],
-        r['Is the vehicle insurance document available?'],
-        r['Are basic vehicle tools available in the vehicle?'],
-        r['Is the vehicle maintenance logbook available?']
-      ].every(x=>String(x||'').toLowerCase()==='yes')?'READY':'CHECK';
-
-      const color=String(r.__COLOR__||r['Vehicle Color']||'').trim();
-
-      body+=`<tr>
-        <td>${esc(val(r,F.plate))}</td>
-        <td>${esc(val(r,F.source))}</td>
-        <td>${esc(val(r,F.type))}</td>
-        <td>${esc(val(r,F.make))}</td>
-        <td>${esc(color)}</td>
-        <td>${esc(val(r,'Year Model'))}</td>
-        <td>${esc(val(r,F.odo))}</td>
-        <td>${esc(val(r,F.status))}</td>
-        <td>${esc(val(r,'Registration Status'))}<br><small>${esc(val(r,'Registration Expiry Date'))}</small></td>
-        <td>${esc(val(r,'Insurance Status'))}<br><small>${esc(val(r,'Date Renewal'))}</small></td>
-        <td>${esc(val(r,'PMS / Change Oil Status'))}<br><small>${esc(val(r,'Next PMS / Change Oil Due'))}</small></td>
-        <td>${esc(val(r,'Battery Status'))}</td>
-        <td>${esc(val(r,'Tire Status'))}</td>
-        <td><b>${readiness}</b></td>
-      </tr>`;
+      const readiness=[r['Is the vehicle registration document available?'],r['Is the vehicle insurance document available?'],r['Are basic vehicle tools available in the vehicle?'],r['Is the vehicle maintenance logbook available?']].every(x=>String(x||'').toLowerCase()==='yes')?'READY':'CHECK';
+      body+='<tr><td>'+esc(val(r,F.plate))+'</td><td>'+esc(val(r,F.type))+'</td><td>'+esc(val(r,F.make))+'</td><td>'+esc(r.__COLOR__||r['Vehicle Color']||'')+'</td><td>'+esc(val(r,'Year Model'))+'</td><td>'+esc(val(r,F.odo))+'</td><td>'+esc(val(r,F.status))+'</td><td>'+esc(val(r,'Registration Status'))+'<br><small>'+esc(val(r,'Registration Expiry Date'))+'</small></td><td>'+esc(val(r,'Insurance Status'))+'<br><small>'+esc(val(r,'Date Renewal'))+'</small></td><td>'+esc(val(r,'PMS / Change Oil Status'))+'<br><small>'+esc(val(r,'Next PMS / Change Oil Due'))+'</small></td><td>'+esc(val(r,'Battery Status'))+'</td><td>'+esc(val(r,'Tire Status'))+'</td><td><b>'+readiness+'</b></td></tr>';
     });
-
     body+='</tbody></table>';
   });
-
-  const postLabel=selectedPost==='__ALL_POSTS__'?'ALL OPHILDAFA POSTS':selectedPost;
-  const sourceLabel=selectedSource==='__ALL_SOURCES__'?'ALL SOURCES':selectedSource;
-  const quarterLabel=selectedQuarter==='__ALL_QUARTERS__'?'ALL QUARTERS':selectedQuarter;
-
-  win.document.write(`<!doctype html><html><head><title>Quarterly Vehicle Monitoring Report</title><style>
-  @page{size:A4 landscape;margin:9mm}
-  body{font-family:Arial,sans-serif;color:#172033;font-size:7.5px}
-  .head{border-bottom:4px solid #b58a2a;padding-bottom:7px}
-  .title{font-size:18px;font-weight:800;color:#09254a}
-  .sub{font-size:9px;color:#667085}
-  .criteria{margin-top:8px;font-size:9px;line-height:1.5}
-  h2{font-size:10px;background:#09254a;color:white;padding:5px 7px;margin:10px 0 0;break-after:avoid}
-  table{width:100%;border-collapse:collapse;table-layout:fixed}
-  th,td{border:1px solid #cfd7e2;padding:4px;vertical-align:top;word-wrap:break-word}
-  th{background:#eaf0f6;color:#23395d;font-size:7px}
-  small{color:#667085}
-  .footer{margin-top:10px;font-size:7px;color:#667085}
-  </style></head><body>
-  <div class="head">
-    <div class="title">OPHILDAFA VEHICLE MONITORING REPORT</div>
-    <div class="sub">QUARTERLY CONSOLIDATED VEHICLE STATUS, COMPLIANCE, MAINTENANCE, AND READINESS</div>
-    <div class="criteria">
-      <b>POST:</b> ${esc(postLabel)} &nbsp; | &nbsp;
-      <b>SOURCE:</b> ${esc(sourceLabel)} &nbsp; | &nbsp;
-      <b>PERIOD:</b> ${esc(quarterLabel)} &nbsp; | &nbsp;
-      <b>YEAR:</b> ${esc(y)}<br>
-      <b>VEHICLES REPORTED:</b> ${found.length}
-    </div>
-  </div>
-  ${body}
-  <div class="footer">
-    This report contains only the historical vehicle records matching the selected Post, Ownership/Source, Reporting Quarter, and Year.
-  </div>
-  
-<script>
-/* FINAL Google Drive viewer fix
-   Uses the exact historical row values from T / AB / AV.
-   Photo: Drive thumbnail endpoint.
-   Documents: Drive preview iframe + exact Drive link.
-*/
-(function(){
-  function exactFileFinal(r, prop, names){
-    const direct=String(r && r[prop] || '').trim();
-    if(direct) return direct;
-    for(const n of names){ const v=String(r && r[n] || '').trim(); if(v) return v; }
-    return '';
-  }
-  function fileIdFinal(url){
-    const s=String(url||'').trim();
-    if(!s) return '';
-    let m=s.match(/[?&]id=([^&#]+)/i); if(m) return decodeURIComponent(m[1]);
-    m=s.match(/\/file\/d\/([^/?#]+)/i); if(m) return m[1];
-    m=s.match(/\/d\/([^/?#]+)/i); if(m) return m[1];
-    m=s.match(/[-\w]{25,}/); return m?m[0]:'';
-  }
-  function rawFinal(url){ return firstFileUrl(url); }
-  function thumbFinal(url){
-    const id=fileIdFinal(url); return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1200' : '';
-  }
-  function previewFinal(url){
-    const id=fileIdFinal(url); return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview' : '';
-  }
-
-  window.openDoc=function(url,title='DOCUMENT'){
-    const raw=rawFinal(url), id=fileIdFinal(raw);
-    const modal=document.getElementById('docModal'), body=document.getElementById('docBody');
-    document.getElementById('docTitle').textContent=title;
-    if(!raw || !id){
-      body.innerHTML='<div class="doc-fallback"><strong>NO SUBMITTED '+esc(title)+'</strong><p>No file was submitted with this historical vehicle record.</p></div>';
-      modal.classList.add('show'); return;
-    }
-    const preview=previewFinal(raw);
-    body.innerHTML=
-      '<div class="doc-actions" style="margin-bottom:12px">'+
-      '<a class="doc-open" href="'+esc(raw)+'" target="_blank" rel="noopener noreferrer">OPEN EXACT FILE IN GOOGLE DRIVE</a>'+
-      '</div>'+
-      '<iframe src="'+esc(preview)+'" title="'+esc(title)+'" style="width:100%;height:70vh;border:1px solid #d7dde5;border-radius:8px;background:#fff" allow="autoplay"></iframe>'+
-      '<div class="doc-fallback" style="margin-top:10px"><p class="doc-note">This is the exact file attached to the selected historical response.</p></div>';
-    modal.classList.add('show');
-  };
-
-  window.show=function(r){
-    selectedRecord=r;
-    const photo=exactFileFinal(r,'__PHOTO__',['Vehicle Photograph','Vehicle Photo']);
-    const reg=exactFileFinal(r,'__REG_DOC__',['Registration Document']);
-    const ins=exactFileFinal(r,'__INS_DOC__',['Insurance Document']);
-    const color=String(r.__COLOR__||r['Vehicle Color']||'').trim();
-    const photoRaw=rawFinal(photo), photoSrc=thumbFinal(photoRaw);
-
-    const main=[
-      ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
-      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-      ['Plate Number',F.plate],['Color','__COLOR__'],['Odometer',F.odo],['Vehicle Status',F.status]
-    ];
-
-    let h='<div class="detail-intro"><div><div class="vehicle-name">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class="vehicle-meta">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
-    h+='<div class="vehicle-layout"><div><div class="photo-box" style="min-height:320px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f5f7fa;border-radius:10px">';
-    if(photoSrc){
-      h+='<img src="'+esc(photoSrc)+'" alt="Vehicle Photograph" style="display:block;width:100%;height:320px;object-fit:contain;cursor:pointer" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')" onerror="this.onerror=null;this.src='+JSON.stringify(photoRaw)+';">';
-    } else {
-      h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
-    }
-    h+='</div><div class="actions no-print">';
-    if(photoRaw) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
-    h+='</div></div>';
-
-    h+='<div><div class="summary">'+main.map(x=>{
-      const v=x[0]==='Vehicle Color'?color:val(r,x[1]);
-      return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
-    }).join('')+'</div></div></div>';
-
-    h+='<div class="actions no-print" style="margin-top:18px">';
-    if(reg) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
-    if(ins) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(ins)+',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
-    h+='</div>';
-
-    h+=section('VEHICLE INFORMATION',[
-      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],['Color','__COLOR__'],['Current Odometer Reading (km)',F.odo],['Current Vehicle Status',F.status]
-    ]);
-    h+=section('REGISTRATION',[
-      ['Registration Document Available','Is the vehicle registration document available?'],['Registration Number','Registration Number'],['Registration Expiry','Registration Expiry'],['Registration Remarks','Registration Remarks']
-    ]);
-    h+=section('MAINTENANCE / PMS',[
-      ['PMS / Change Oil Status','PMS / Change Oil Status'],['Last PMS / Change Oil','Date of Last PMS / Change Oil'],['Next PMS / Change Oil Due','Next PMS / Change Oil Due'],['Quarterly PMS Fund Allocation','Quarterly PMS Fund Allocation'],['PMS Remarks','Remarks_1'],['Battery Status','Battery Status'],['Battery Last Replaced','Date Battery Last Replaced'],['Battery Replacement Due','Battery Replacement Due / Recommended Date'],['Battery Remarks','Remarks_2'],['Tire Status','Tire Status'],['Tire Last Replaced','Date Last Replaced'],['Tire Replacement Due','Tire Replacement Due / Recommended Date'],['Tire Remarks','Remarks_3']
-    ]);
-    h+=section('INSURANCE',[
-      ['Insurance Status','Insurance Status'],['Provider','Insurance Provider'],['Policy / Certificate Number','Policy / Certificate Number'],['Date Insured','Date Insured'],['Renewal / Expiry','Date Renewal'],['Coverage','Insurance Coverage'],['Premium / Amount Paid','Insurance Premium / Amount Paid']
-    ]);
-    h+=section('VEHICLE READINESS',[
-      ['Registration Document Available','Is the vehicle registration document available?'],['Insurance Document Available','Is the vehicle insurance document available?'],['Basic Tools Available','Are basic vehicle tools available in the vehicle?'],['Maintenance Logbook Available','Is the vehicle maintenance logbook available?'],['Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?'],['Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?'],['Deficiency Details','Briefly describe the deficiency.']
-    ]);
-    h+='<div class="footer">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>';
-    detail.innerHTML=h;
-    detail.style.display='block';
-    document.getElementById('results').style.display='none';
-    window.scrollTo({top:0,behavior:'smooth'});
-  };
-})();
-</script>
-
-</body></html>`);
-
-  win.document.close();
-  setTimeout(()=>win.print(),500);
+  const win=window.open('','_blank');
+  win.document.write('<!doctype html><html><head><title>Quarterly Vehicle Monitoring Report</title><style>@page{size:A4 landscape;margin:9mm}body{font-family:Arial,sans-serif;color:#172033;font-size:7.5px}.head{border-bottom:4px solid #b58a2a;padding-bottom:7px}.title{font-size:18px;font-weight:800;color:#09254a}.sub{font-size:9px;color:#667085}h2{font-size:10px;background:#09254a;color:white;padding:5px 7px;margin:10px 0 0;break-after:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #cfd7e2;padding:4px;vertical-align:top;word-wrap:break-word}th{background:#eaf0f6;color:#23395d;font-size:7px}small{color:#667085}.criteria{margin-top:7px;line-height:1.5}.footer{margin-top:10px;font-size:7px;color:#667085}</style></head><body><div class="head"><div class="title">OPHILDAFA VEHICLE MONITORING REPORT</div><div class="sub">QUARTERLY VEHICLE REPORT — CURRENT SEARCH SELECTION</div><div class="criteria"><b>POST:</b> '+esc(postLabel)+' &nbsp; <b>SOURCE:</b> '+esc(sourceLabel)+' &nbsp; <b>PERIOD:</b> '+esc(quarterLabel)+' &nbsp; <b>YEAR:</b> '+esc(y)+' &nbsp; <b>VEHICLES REPORTED:</b> '+found.length+'</div></div>'+body+'<div class="footer">This report reflects only the historical vehicle records matching the selected Post, Source, Reporting Quarter, and Year.</div></body></html>');
+  win.document.close(); setTimeout(()=>win.print(),500);
 };
 </script>
-
-<script>
-/* OPhilDAFA file-field fix: exact Form Responses 1 columns
-   T  = Registration Document
-   AB = Insurance Document
-   AV = Vehicle Photograph
-   AW = Vehicle Color
-*/
-(function(){
-  const _oldParseCSV = window.parseCSV;
-  const _oldNormalizeRows = window.normalizeRows;
-
-  function parseCSVExact(text){
-    text=String(text||'').replace(/^\uFEFF/,'');
-    const rows=[]; let row=[],cell='',q=false;
-    for(let i=0;i<text.length;i++){
-      const c=text[i], n=text[i+1];
-      if(q){
-        if(c==='"' && n==='"'){cell+='"';i++;}
-        else if(c==='"') q=false;
-        else cell+=c;
-      }else{
-        if(c==='"') q=true;
-        else if(c===','){row.push(cell);cell='';}
-        else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
-        else if(c!=='\r') cell+=c;
-      }
-    }
-    if(cell!=='' || row.length){row.push(cell);rows.push(row);}
-    if(!rows.length)return [];
-    const headers=rows[0].map(h=>String(h).trim());
-    return rows.slice(1).filter(r=>r.some(v=>String(v||'').trim()!=='')).map(r=>{
-      const o={};
-      headers.forEach((h,i)=>o[h]=String(r[i]??'').trim());
-      // Exact column-position fallbacks, zero-based:
-      o.__REG_DOC__ = String(r[19]??'').trim(); // T
-      o.__INS_DOC__ = String(r[27]??'').trim(); // AB
-      o.__PHOTO__   = String(r[47]??'').trim(); // AV
-      o.__COLOR__   = String(r[48]??'').trim(); // AW
-      return o;
-    });
-  }
-
-  function normalizeExact(rows){
-    return rows.map(r=>{
-      const o={...r};
-      o[F.quarter]=String(o[F.quarter]||'').trim();
-      o[F.year]=String(o[F.year]||'').trim().replace(/\.0$/,'');
-      return o;
-    }).filter(r=>r[F.post]||r[F.plate]||r[F.make]);
-  }
-
-  window.parseCSV = parseCSVExact;
-  window.normalizeRows = normalizeExact;
-
-  const _oldLoad = window.loadLiveData;
-  window.loadLiveData = async function(){
-    setStatus(false,'<strong>CONNECTING TO GOOGLE SHEETS…</strong> — Reading published Form Responses 1.');
-    RECORDS=[]; selectedRecord=null; clearSelection();
-    try{
-      const u=LIVE_CSV_URL+'&_='+Date.now();
-      const response=await fetch(u,{method:'GET',cache:'no-store'});
-      if(!response.ok) throw new Error('HTTP '+response.status);
-      const csv=await response.text();
-      const rows=normalizeExact(parseCSVExact(csv));
-      if(!rows.length) throw new Error('The published CSV returned no response rows.');
-      RECORDS=rows;
-      setStatus(true,'<strong>LIVE GOOGLE SHEETS: CONNECTED</strong> — '+RECORDS.length+' Form Responses loaded from Form Responses 1.');
-      refreshFilters();
-      return true;
-    }catch(e){
-      RECORDS=[];
-      setStatus(false,'<strong>LIVE GOOGLE SHEETS: NOT CONNECTED</strong> — '+esc(e.message||String(e)));
-      refreshFilters();
-      return false;
-    }
-  };
-
-  function exactFile(r, prop, headerNames){
-    const direct = String(r[prop]||'').trim();
-    if(direct) return direct;
-    for(const k of headerNames){
-      const v=String(r[k]||'').trim();
-      if(v) return v;
-    }
-    return '';
-  }
-
-  window.show = function(r){
-    selectedRecord=r;
-
-    const photo=exactFile(r,'__PHOTO__',['Vehicle Photograph','Vehicle Photo']);
-    const reg=exactFile(r,'__REG_DOC__',['Registration Document']);
-    const ins=exactFile(r,'__INS_DOC__',['Insurance Document']);
-    const color=String(r.__COLOR__||r['Vehicle Color']||'').trim();
-
-    const main=[
-      ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
-      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-      ['Plate Number',F.plate],['Color','__COLOR__'],['Odometer',F.odo],['Vehicle Status',F.status]
-    ];
-
-    let h='<div class="detail-intro"><div><div class="vehicle-name">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class="vehicle-meta">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
-
-    h+='<div class="vehicle-layout"><div><div class="photo-box">';
-    if(photo){
-      h+='<div class="photo-placeholder"><strong>VEHICLE PHOTOGRAPH</strong><br><span>Photograph submitted for this historical record.</span></div>';
-    } else {
-      h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
-    }
-    h+='</div><div class="actions no-print">';
-    h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
-    h+='</div></div>';
-
-    h+='<div><div class="summary">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>{
-      const v=x[0]==='Vehicle Color'?color:val(r,x[1]);
-      return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
-    }).join('')+'</div>';
-
-    h+='<div class="vehicle-status-box"><div class="status-label">VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div><div class="status-detail">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
-
-    h+='<div class="actions no-print">';
-    h+='<button type="button" onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
-    h+='<button type="button" onclick="openDoc('+JSON.stringify(ins)+',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
-    h+='<button class="gold" onclick="printVehicle()">PRINT VEHICLE REPORT</button></div></div></div>';
-
-    h+=section('REGISTRATION',[
-      ['Registration Status','Registration Status'],['Registration Expiry Date','Registration Expiry Date'],
-      ['Registration Amount','Registration Amount']
-    ]);
-    h+=section('MAINTENANCE / PMS',[
-      ['Overall Vehicle Condition','Overall Vehicle Condition'],
-      ['Condition / Deficiency','Describe the vehicle’s current operational status, condition, or deficiency.'],
-      ['PMS / Change Oil Status','PMS / Change Oil Status'],['Last PMS / Change Oil','Date of Last PMS / Change Oil'],
-      ['Next PMS / Change Oil Due','Next PMS / Change Oil Due'],['Battery Status','Battery Status'],
-      ['Battery Last Replaced','Date Battery Last Replaced'],
-      ['Battery Replacement Due','Battery Replacement Due / Recommended Date'],
-      ['Tire Status','Tire Status'],['Tire Last Replaced','Date Last Replaced'],
-      ['Tire Replacement Due','Tire Replacement Due / Recommended Date']
-    ]);
-    h+=section('INSURANCE',[
-      ['Insurance Status','Insurance Status'],['Insurance Provider','Insurance Provider'],
-      ['Policy / Certificate Number','Policy / Certificate Number'],
-      ['Date Insured','Date Insured'],['Renewal / Expiry Date','Date Renewal'],
-      ['Insurance Coverage','Insurance Coverage'],['Premium / Amount Paid','Insurance Premium / Amount Paid']
-    ]);
-    h+=section('VEHICLE READINESS',[
-      ['Registration Document Available','Is the vehicle registration document available?'],
-      ['Insurance Document Available','Is the vehicle insurance document available?'],
-      ['Basic Vehicle Tools Available','Are basic vehicle tools available in the vehicle?'],
-      ['Maintenance Logbook Available','Is the vehicle maintenance logbook available?'],
-      ['Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?'],
-      ['Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?'],
-      ['Deficiency Details','Briefly describe the deficiency.']
-    ]);
-    details.innerHTML=h;
-  };
-
-  window.openDoc = function(url,title){
-    const raw=String(url||'').trim();
-    if(!raw){
-      alert('NO SUBMITTED '+title+'.');
-      return;
-    }
-    // Open the exact Google Form/Drive URL from the selected historical row.
-    window.open(raw,'_blank','noopener,noreferrer');
-  };
-
-  // Initial live load using the exact-column parser.
-  loadLiveData();
-})();
-</script>
-
-
-<script>
-/* FINAL Google Drive viewer fix
-   Uses the exact historical row values from T / AB / AV.
-   Photo: Drive thumbnail endpoint.
-   Documents: Drive preview iframe + exact Drive link.
-*/
-(function(){
-  function exactFileFinal(r, prop, names){
-    const direct=String(r && r[prop] || '').trim();
-    if(direct) return direct;
-    for(const n of names){ const v=String(r && r[n] || '').trim(); if(v) return v; }
-    return '';
-  }
-  function fileIdFinal(url){
-    const s=String(url||'').trim();
-    if(!s) return '';
-    let m=s.match(/[?&]id=([^&#]+)/i); if(m) return decodeURIComponent(m[1]);
-    m=s.match(/\/file\/d\/([^/?#]+)/i); if(m) return m[1];
-    m=s.match(/\/d\/([^/?#]+)/i); if(m) return m[1];
-    m=s.match(/[-\w]{25,}/); return m?m[0]:'';
-  }
-  function rawFinal(url){ return firstFileUrl(url); }
-  function thumbFinal(url){
-    const id=fileIdFinal(url); return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1200' : '';
-  }
-  function previewFinal(url){
-    const id=fileIdFinal(url); return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview' : '';
-  }
-
-  window.openDoc=function(url,title='DOCUMENT'){
-    const raw=rawFinal(url), id=fileIdFinal(raw);
-    const modal=document.getElementById('docModal'), body=document.getElementById('docBody');
-    document.getElementById('docTitle').textContent=title;
-    if(!raw || !id){
-      body.innerHTML='<div class="doc-fallback"><strong>NO SUBMITTED '+esc(title)+'</strong><p>No file was submitted with this historical vehicle record.</p></div>';
-      modal.classList.add('show'); return;
-    }
-    const preview=previewFinal(raw);
-    body.innerHTML=
-      '<div class="doc-actions" style="margin-bottom:12px">'+
-      '<a class="doc-open" href="'+esc(raw)+'" target="_blank" rel="noopener noreferrer">OPEN EXACT FILE IN GOOGLE DRIVE</a>'+
-      '</div>'+
-      '<iframe src="'+esc(preview)+'" title="'+esc(title)+'" style="width:100%;height:70vh;border:1px solid #d7dde5;border-radius:8px;background:#fff" allow="autoplay"></iframe>'+
-      '<div class="doc-fallback" style="margin-top:10px"><p class="doc-note">This is the exact file attached to the selected historical response.</p></div>';
-    modal.classList.add('show');
-  };
-
-  window.show=function(r){
-    selectedRecord=r;
-    const photo=exactFileFinal(r,'__PHOTO__',['Vehicle Photograph','Vehicle Photo']);
-    const reg=exactFileFinal(r,'__REG_DOC__',['Registration Document']);
-    const ins=exactFileFinal(r,'__INS_DOC__',['Insurance Document']);
-    const color=String(r.__COLOR__||r['Vehicle Color']||'').trim();
-    const photoRaw=rawFinal(photo), photoSrc=thumbFinal(photoRaw);
-
-    const main=[
-      ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
-      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-      ['Plate Number',F.plate],['Color',null],['Odometer',F.odo],['Vehicle Status',F.status]
-    ];
-
-    let h='<div class="detail-intro"><div><div class="vehicle-name">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class="vehicle-meta">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
-    h+='<div class="vehicle-layout"><div><div class="photo-box" style="min-height:320px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f5f7fa;border-radius:10px">';
-    if(photoRaw){
-      const photoPreview=previewFinal(photoRaw);
-      h+='<iframe src="'+esc(photoPreview)+'" title="Vehicle Photograph" style="display:block;width:100%;height:320px;border:0;background:#fff"></iframe>';
-    } else {
-      h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
-    }
-    h+='</div><div class="actions no-print">';
-    if(photoRaw) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
-    h+='</div></div>';
-
-    h+='<div><div class="summary">'+main.map(x=>{
-      const v=x[0]==='Color'?color:val(r,x[1]);
-      return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
-    }).join('')+'</div></div></div>';
-
-    h+='<div class="actions no-print" style="margin-top:18px">';
-    if(reg) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
-    if(ins) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(ins)+',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
-    h+='</div>';
-
-    h+=section('VEHICLE INFORMATION',[
-      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],['Color','__COLOR__'],['Current Odometer Reading (km)',F.odo],['Current Vehicle Status',F.status]
-    ]);
-    h+=section('REGISTRATION',[
-      ['Registration Document Available','Is the vehicle registration document available?'],['Registration Number','Registration Number'],['Registration Expiry','Registration Expiry'],['Registration Remarks','Registration Remarks']
-    ]);
-    h+=section('MAINTENANCE / PMS',[
-      ['PMS / Change Oil Status','PMS / Change Oil Status'],['Last PMS / Change Oil','Date of Last PMS / Change Oil'],['Next PMS / Change Oil Due','Next PMS / Change Oil Due'],['Quarterly PMS Fund Allocation','Quarterly PMS Fund Allocation'],['PMS Remarks','Remarks_1'],['Battery Status','Battery Status'],['Battery Last Replaced','Date Battery Last Replaced'],['Battery Replacement Due','Battery Replacement Due / Recommended Date'],['Battery Remarks','Remarks_2'],['Tire Status','Tire Status'],['Tire Last Replaced','Date Last Replaced'],['Tire Replacement Due','Tire Replacement Due / Recommended Date'],['Tire Remarks','Remarks_3']
-    ]);
-    h+=section('INSURANCE',[
-      ['Insurance Status','Insurance Status'],['Provider','Insurance Provider'],['Policy / Certificate Number','Policy / Certificate Number'],['Date Insured','Date Insured'],['Renewal / Expiry','Date Renewal'],['Coverage','Insurance Coverage'],['Premium / Amount Paid','Insurance Premium / Amount Paid']
-    ]);
-    h+=section('VEHICLE READINESS',[
-      ['Registration Document Available','Is the vehicle registration document available?'],['Insurance Document Available','Is the vehicle insurance document available?'],['Basic Tools Available','Are basic vehicle tools available in the vehicle?'],['Maintenance Logbook Available','Is the vehicle maintenance logbook available?'],['Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?'],['Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?'],['Deficiency Details','Briefly describe the deficiency.']
-    ]);
-    h+='<div class="footer">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>';
-    detail.innerHTML=h;
-    detail.style.display='block';
-    document.getElementById('results').style.display='none';
-    window.scrollTo({top:0,behavior:'smooth'});
-  };
-})();
-</script>
-
 </body></html>
