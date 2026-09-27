@@ -103,7 +103,67 @@ tr:hover td{background:#f8fafc}
 }
 #details .vehicle-status-box .status-main{grid-column:1 !important;grid-row:1 !important;min-width:0 !important;}
 #details .vehicle-status-box .status-detail{grid-column:2 !important;grid-row:1 !important;width:auto !important;min-width:0 !important;align-self:stretch !important;}
-</style></head>
+</style>
+<style>
+/* VEHICLE STATUS ONLY — full available width, two-row layout. */
+#details .vehicle-status-box{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  grid-template-rows:auto minmax(150px,1fr) !important;
+  width:100% !important;
+  max-width:none !important;
+  min-width:0 !important;
+  min-height:260px !important;
+  margin-top:18px !important;
+  padding:0 !important;
+  box-sizing:border-box !important;
+  border:1px solid #cfd9e5 !important;
+  border-left:6px solid var(--gold) !important;
+  border-radius:10px !important;
+  overflow:hidden !important;
+  background:#f8fafc !important;
+}
+#details .vehicle-status-box .status-row-main{
+  padding:24px 30px !important;
+  border-bottom:1px solid #dfe5ec !important;
+  min-width:0 !important;
+}
+#details .vehicle-status-box .status-row-detail{
+  padding:22px 30px 28px !important;
+  min-width:0 !important;
+  min-height:150px !important;
+}
+#details .vehicle-status-box .status-label,
+#details .vehicle-status-box .status-detail-label{
+  font-size:10px !important;
+  font-weight:900 !important;
+  letter-spacing:.6px !important;
+  color:#667085 !important;
+  text-transform:uppercase !important;
+  margin-bottom:9px !important;
+}
+#details .vehicle-status-box .status-value{
+  font-size:20px !important;
+  font-weight:800 !important;
+  line-height:1.45 !important;
+  color:var(--navy) !important;
+  overflow-wrap:anywhere !important;
+}
+#details .vehicle-status-box .status-detail-text{
+  font-size:15px !important;
+  line-height:1.75 !important;
+  color:#344054 !important;
+  white-space:pre-wrap !important;
+  word-break:break-word !important;
+  overflow-wrap:anywhere !important;
+}
+@media (max-width:900px){
+  #details .vehicle-status-box{grid-template-rows:auto minmax(130px,1fr)!important;}
+  #details .vehicle-status-box .status-row-main{padding:20px 22px!important;}
+  #details .vehicle-status-box .status-row-detail{padding:18px 22px 22px!important;}
+}
+</style>
+</head>
 <body>
 <div class="app">
   <div class="hero" aria-label="OPhilDAFA Vehicle Monitoring Report"></div>
@@ -893,6 +953,11 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     else h+='<button class="secondary" type="button" onclick="openDoc(\'\',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
     h+='<button class="gold" type="button" onclick="printVehicle()">PRINT VEHICLE REPORT</button>';
     h+='</div></div></div>';
+
+    // VEHICLE STATUS — uses Column M for the first row and Column N for the remaining detail.
+    const vehicleStatus=val(r,'Current Vehicle Status')||'—';
+    const vehicleStatusDetail=val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.';
+    h+='<div class="vehicle-status-box"><div class="status-row-main"><div class="status-label">VEHICLE STATUS</div><div class="status-value">'+esc(vehicleStatus)+'</div></div><div class="status-row-detail"><div class="status-detail-label">CURRENT OPERATIONAL STATUS / CONDITION / DEFICIENCY</div><div class="status-detail-text">'+esc(vehicleStatusDetail)+'</div></div></div>';
 
     h+=section('VEHICLE INFORMATION',[
       ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],['Color','__COLOR__'],['Current Odometer Reading (km)',F.odo],['Current Vehicle Status',F.status]
