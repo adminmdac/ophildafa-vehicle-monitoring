@@ -57,7 +57,7 @@ tr:hover td{background:#f8fafc}
 .detail-intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px;padding:13px 15px;border-radius:10px;background:linear-gradient(135deg,#f6f8fb,#fff);border:1px solid #e0e7ef}
 .detail-intro .vehicle-name{font-size:19px;font-weight:850;color:var(--navy);letter-spacing:.2px}
 .detail-intro .vehicle-meta{font-size:11px;color:#667085;margin-top:3px}
-.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:14px;border:1px solid #cfd9e5;border-left:5px solid var(--gold);border-radius:10px;background:#f8fafc;padding:20px 22px;min-height:150px}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:14px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:9px;padding-top:9px;border-top:1px solid #e3e8ef;font-size:12.5px;line-height:1.6;color:#344054;white-space:pre-wrap;word-break:break-word}
+.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:30px 32px;min-height:330px;width:100%;box-sizing:border-box}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:18px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:14px;padding-top:14px;border-top:1px solid #e3e8ef;font-size:14px;line-height:1.8;color:#344054;white-space:pre-wrap;word-break:break-word}
 .report-note{font-size:11px;color:#667085;margin-top:8px}
 .doc-modal{position:fixed;inset:0;background:rgba(4,18,39,.72);display:none;align-items:center;justify-content:center;padding:28px;z-index:9999}
 .doc-modal.show{display:flex}
@@ -211,6 +211,9 @@ document.getElementById('refreshBtn').onclick=loadLiveData;
 const post=document.getElementById('post'),source=document.getElementById('source'),quarter=document.getElementById('quarter'),year=document.getElementById('year');
 const results=document.getElementById('results'),details=document.getElementById('details'),count=document.getElementById('count');
 let selectedRecord=null;
+let searchedRecords=[];
+let searchedYear='';
+let searchedCriteria=null;
 
 function unique(f){return [...new Set(RECORDS.map(r=>r[f]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}
 function fill(s,a){a.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;s.appendChild(o)})}
@@ -304,7 +307,7 @@ function renderResults(found){
       String(val(a,F.post)).localeCompare(String(val(b,F.post)),undefined,{numeric:true}) ||
       String(val(a,F.plate)).localeCompare(String(val(b,F.plate)),undefined,{numeric:true}));
   }
-  let h='<table><thead><tr><th>POST</th><th>PLATE NUMBER</th><th>TYPE</th><th>MAKE / MODEL</th><th>SOURCE</th><th>YEAR MODEL</th><th>ODOMETER</th><th>STATUS</th></tr></thead><tbody>';
+  let h='<table><thead><tr><th>POST</th><th>PLATE NUMBER</th><th>TYPE</th><th>MAKE / MODEL</th><th>SOURCE</th><th>COLOR</th><th>ODOMETER</th><th>STATUS</th></tr></thead><tbody>';
   let currentGroup=null;
   ordered.forEach((r,i)=>{
     if(mode==='ownership'){
@@ -315,18 +318,19 @@ function renderResults(found){
       }
     }
     const idx=found.indexOf(r);
-    h+=`<tr><td>${esc(val(r,F.post))}</td><td><span class="plate" data-i="${idx}">${esc(val(r,F.plate))}</span></td><td>${esc(val(r,F.type))}</td><td>${esc(val(r,F.make))}</td><td>${esc(val(r,F.source))}</td><td>${esc(val(r,'Year Model'))}</td><td>${esc(val(r,F.odo))}</td><td>${esc(val(r,F.status))}</td></tr>`;
+    h+=`<tr><td>${esc(val(r,F.post))}</td><td><span class="plate" data-i="${idx}">${esc(val(r,F.plate))}</span></td><td>${esc(val(r,F.type))}</td><td>${esc(val(r,F.make))}</td><td>${esc(val(r,F.source))}</td><td>${esc(String(r.__COLOR__||r['Vehicle Color']||'').trim()||'—')}</td><td>${esc(val(r,F.odo))}</td><td>${esc(val(r,F.status))}</td></tr>`;
   });
   results.innerHTML=h+'</tbody></table>';
   results.querySelectorAll('.plate').forEach(e=>e.onclick=(ev)=>{ev.preventDefault();ev.stopPropagation();show(found[+e.dataset.i]);});
 }
 
 async function searchRecords(){
-  await loadLiveData();
+  // SEARCH works on the data already loaded into RECORDS.
+  // Do not reload the Google Sheet here; reloading was clearing the displayed results.
   const y=String(year.value||'').trim();
-  if(!post.value||!quarter.value||!/^\d{4}$/.test(y)){
+  if(!post.value||!quarter.value||!/^[0-9]{4}$/.test(y)){
     results.innerHTML='<div class="muted">Please select POST, REPORTING QUARTER and enter a valid 4-digit YEAR.</div>';
-    count.textContent=''; clearSelection(); return;
+    count.textContent=''; searchedRecords=[]; searchedYear=''; clearSelection(); return;
   }
   const found=RECORDS.filter(r=>{
     const postMatch=post.value==='__ALL_POSTS__'||r[F.post]===post.value;
@@ -334,25 +338,19 @@ async function searchRecords(){
     const quarterMatch=quarter.value==='__ALL_QUARTERS__'||r[F.quarter]===quarter.value;
     return postMatch&&sourceMatch&&quarterMatch&&String(r[F.year]||'').trim()===y;
   });
+  searchedRecords=[...found];
+  searchedYear=y;
+  searchedCriteria={post:post.value,source:source.value,quarter:quarter.value,year:y};
   count.textContent=found.length+' record(s)';
   if(!found.length){
     results.innerHTML='<div class="muted">No vehicle records found for the selected criteria.</div>';
     clearSelection(); return;
   }
   renderResults(found);
-};
+}
 
-document.getElementById('sortMode').addEventListener('change',async()=>{
-  await loadLiveData();
-  const y=String(year.value||'').trim();
-  if(!post.value||!quarter.value||!/^\d{4}$/.test(y)) return;
-  const found=RECORDS.filter(r=>{
-    const postMatch=post.value==='__ALL_POSTS__'||r[F.post]===post.value;
-    const sourceMatch=source.value==='__ALL_SOURCES__'||String(r[F.source]||'').trim().toUpperCase()===source.value;
-    const quarterMatch=quarter.value==='__ALL_QUARTERS__'||r[F.quarter]===quarter.value;
-    return postMatch&&sourceMatch&&quarterMatch&&String(r[F.year]||'').trim()===y;
-  });
-  if(found.length) renderResults(found);
+document.getElementById('sortMode').addEventListener('change',()=>{
+  if(searchedRecords.length) renderResults(searchedRecords);
 });
 
 function show(r){
@@ -370,20 +368,12 @@ function show(r){
     const psrc=pid ? ('https://drive.google.com/thumbnail?id='+encodeURIComponent(pid)+'&sz=w1200') : photo;
     h+='<div class="photo-image-wrap"><img class="vehicle-photo" src="'+esc(psrc)+'" alt="Vehicle Photograph" onerror="this.style.display=\'none\';this.parentElement.innerHTML=\'<div class=\\\'photo-placeholder\\\'>VEHICLE PHOTOGRAPH AVAILABLE<br><span>Click VIEW VEHICLE PICTURE to open the exact submitted photograph.</span></div>\';"></div>';
   } else h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
-  h+='</div><div class="actions no-print">';
-  if(photo) h+='<a class="secondary doc-open" href="'+esc(firstFileUrl(photo))+'" target="_blank" rel="noopener noreferrer">VIEW VEHICLE PICTURE</a>';
-  else h+='<button class="secondary" type="button" onclick="openDoc(\'\',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
-  h+='</div></div>';
+  h+='</div><div class="actions no-print"><button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button></div></div>';
   h+='<div><div class=\"summary\">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>'<div class=\"card\"><div class=\"k\">'+esc(x[0])+'</div><div class=\"v\">'+esc(val(r,x[1])||'—')+'</div></div>').join('')+'</div>';
-  h+='<div class=\"vehicle-status-box\"><div class=\"status-label\">VEHICLE STATUS</div><div class=\"status-value\">'+esc(val(r,F.status)||'—')+'</div><div class=\"status-detail\">'+esc(val(r,'Briefly describe the current condition/deficiency.')||val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
-  h+='<div class="actions no-print">';
-  const regLink=firstFileUrl(String(r.__REG_DOC__||'').trim());
-  const insLink=firstFileUrl(String(r.__INS_DOC__||'').trim());
-  if(regLink) h+='<a class="secondary doc-open" href="'+esc(regLink)+'" target="_blank" rel="noopener noreferrer">VIEW REGISTRATION DOCUMENT</a>';
-  else h+='<button type="button" onclick="openDoc(\'\',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
-  if(insLink) h+='<a class="secondary doc-open" href="'+esc(insLink)+'" target="_blank" rel="noopener noreferrer">VIEW INSURANCE DOCUMENT</a>';
-  else h+='<button type="button" onclick="openDoc(\'\',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
-  h+='<button class="gold" type="button" onclick="printVehicle()">PRINT VEHICLE REPORT</button></div></div></div>';
+  h+='<div class=\"vehicle-status-box\"><div class=\"status-label\">VEHICLE STATUS</div><div class=\"status-value\">'+esc(val(r,F.status)||'—')+'</div><div class=\"status-detail\">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
+  h+='<div class=\"actions no-print\"><button onclick=\"openDoc('+JSON.stringify(String(r.__REG_DOC__||'').trim())+',\'REGISTRATION DOCUMENT\')\">VIEW REGISTRATION DOCUMENT</button>';
+  h+='<button onclick=\"openDoc('+JSON.stringify(String(r.__INS_DOC__||'').trim())+',\'INSURANCE DOCUMENT\')\">VIEW INSURANCE DOCUMENT</button>';
+  h+='<button class=\"gold\" onclick=\"printVehicle()\">PRINT VEHICLE REPORT</button></div></div></div>';
 
   h+=section('REGISTRATION',[
     ['Registration Status','Registration Status'],['Date of Registration','Date of Registration'],
@@ -421,9 +411,18 @@ function clearSelection(){
 }
 document.getElementById('clearBtn').onclick=clearSelection;
 
+function printVehicleImageUrl(value){
+  const raw=firstFileUrl(value);
+  const id=driveFileId(raw);
+  if(!raw) return '';
+  // Prefer the Google Drive thumbnail endpoint for a printable image; the exact
+  // submitted Drive URL remains available through the viewer/open button.
+  return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1600' : raw;
+}
+
 function printVehicle(){
   if(!selectedRecord){alert('Select a vehicle record first.');return}
-  const r=selectedRecord, photo=firstFileValue(r,['Vehicle Photograph','Vehicle Photo','Upload a recent three-quarter view photograph of the vehicle, showing the front, one side, and roof.','Vehicle Photograph / Photo']);
+  const r=selectedRecord, photo=String(r.__PHOTO__||'').trim() || firstFileValue(r,['Vehicle Photograph','Vehicle Photo','Upload a recent three-quarter view photograph of the vehicle, showing the front, one side, and roof.','Vehicle Photograph / Photo']);
   const win=window.open('','_blank');
   const row=(label,key)=>`<tr><td>${esc(label)}</td><td>${esc(val(r,key)||'—')}</td></tr>`;
   win.document.write(`<!doctype html><html><head><title>Vehicle Report - ${esc(val(r,F.plate))}</title><style>
@@ -432,11 +431,11 @@ function printVehicle(){
   .sub{font-size:10px;color:#667085;margin-top:3px}.period{margin-top:10px;font-weight:800}
   h2{font-size:11px;background:#09254a;color:white;padding:6px 8px;margin:12px 0 0}
   table{width:100%;border-collapse:collapse}td{border:1px solid #d8dee7;padding:5px;vertical-align:top}td:first-child{width:28%;font-weight:800;background:#f4f6f8}
-  .photo{float:right;width:150px;height:110px;object-fit:cover;border:1px solid #ccd5df;margin-left:12px}
+  .photo{position:absolute;top:13mm;right:13mm;width:52mm;height:39mm;object-fit:contain;border:1px solid #ccd5df;background:#fff;padding:1mm;box-sizing:border-box}.head{padding-right:58mm}
   .clear{clear:both}.footer{margin-top:16px;font-size:8px;color:#667085}
   </style></head><body>
   <div class="head"><div class="title">OPHILDAFA VEHICLE MONITORING REPORT</div><div class="sub">Military Diplomatic Affairs Center | Historical Vehicle Record</div></div>
-  ${photo?`<img class="photo" src="${esc(driveImage(photo))}" onerror="this.style.display='none'">`:''}
+  ${photo?`<img class="photo" src="${esc(printVehicleImageUrl(photo))}" onerror="this.style.display='none'">`:''}
   <div class="period">${esc(val(r,F.post))} — ${esc(val(r,F.quarter))} CY ${esc(val(r,F.year))}</div>
   <h2>VEHICLE INFORMATION</h2><table>
   ${row('Post',F.post)}${row('Reporting Quarter',F.quarter)}${row('Year',F.year)}${row('Source',F.source)}
@@ -457,19 +456,19 @@ function printVehicle(){
 }
 
 document.getElementById('quarterlyBtn').onclick=async()=>{
-  await loadLiveData();
-
-  const y=String(year.value||'').trim();
-  if(!/^\d{4}$/.test(y)){
-    alert('Enter a valid 4-digit YEAR.');
+  // Use the year already entered for the current search. If SEARCH was completed,
+  // use its stored year so the report never asks for the year again.
+  const y=String(searchedYear||year.value||'').trim();
+  if(!/^[0-9]{4}$/.test(y)){
+    alert('Please enter a valid 4-digit YEAR in the YEAR field, then click SEARCH.');
     return;
   }
 
   // The Quarterly Report follows the CURRENT SEARCH/FILTER selections:
   // POST + OWNERSHIP/SOURCE + REPORTING QUARTER + YEAR.
-  const selectedPost=post.value;
-  const selectedSource=source.value;
-  const selectedQuarter=quarter.value;
+  const selectedPost=searchedCriteria?.post ?? post.value;
+  const selectedSource=searchedCriteria?.source ?? source.value;
+  const selectedQuarter=searchedCriteria?.quarter ?? quarter.value;
 
   if(!selectedPost){
     alert('Select a POST first.');
@@ -481,13 +480,14 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     return;
   }
 
-  const found=RECORDS.filter(r=>{
-    const postMatch=selectedPost==='__ALL_POSTS__'||String(r[F.post]||'').trim()===selectedPost;
-    const sourceMatch=selectedSource==='__ALL_SOURCES__'||String(r[F.source]||'').trim().toUpperCase()===String(selectedSource).trim().toUpperCase();
-    const quarterMatch=selectedQuarter==='__ALL_QUARTERS__'||String(r[F.quarter]||'').trim()===selectedQuarter;
-    const yearMatch=String(r[F.year]||'').trim()===y;
-    return postMatch && sourceMatch && quarterMatch && yearMatch;
-  });
+  // IMPORTANT: Quarterly Report is a report of the CURRENT SEARCH RESULT SET.
+  // Do not query RECORDS again here; doing so can reintroduce records outside the
+  // exact result set the user just searched.
+  if(!searchedRecords.length){
+    alert('Please click SEARCH first. The Quarterly Report is based on the records currently returned by SEARCH.');
+    return;
+  }
+  const found=[...searchedRecords];
 
   if(!found.length){
     alert('No vehicle records found for the selected POST, OWNERSHIP / SOURCE, REPORTING QUARTER, and YEAR.');
@@ -786,6 +786,13 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     const id=fileIdFinal(url); return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview' : '';
   }
 
+  window.closeDoc=function(){
+    const modal=document.getElementById('docModal');
+    const body=document.getElementById('docBody');
+    if(modal) modal.classList.remove('show');
+    if(body) body.innerHTML='';
+  };
+
   window.openDoc=function(url,title='DOCUMENT'){
     const raw=rawFinal(url), id=fileIdFinal(raw);
     const modal=document.getElementById('docModal'), body=document.getElementById('docBody');
@@ -799,7 +806,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
       '<div class="doc-actions" style="margin-bottom:12px">'+
       '<a class="doc-open" href="'+esc(raw)+'" target="_blank" rel="noopener noreferrer">OPEN EXACT FILE IN GOOGLE DRIVE</a>'+
       '</div>'+
-      '<iframe src="'+esc(preview)+'" title="'+esc(title)+'" style="width:100%;height:70vh;border:1px solid #d7dde5;border-radius:8px;background:#fff" allow="autoplay"></iframe>'+
+      '<iframe src="'+esc(preview)+'" title="'+esc(title)+'" style="width:100%;height:calc(92vh - 125px);min-height:420px;border:1px solid #d7dde5;border-radius:8px;background:#fff" allow="autoplay"></iframe>'+
       '<div class="doc-fallback" style="margin-top:10px"><p class="doc-note">This is the exact file attached to the selected historical response.</p></div>';
     modal.classList.add('show');
   };
@@ -834,14 +841,16 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     h+='<div><div class="summary">'+main.map(x=>{
       const v=x[0]==='Color'?color:val(r,x[1]);
       return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
-    }).join('')+'</div></div></div>';
+    }).join('')+'</div>';
 
     h+='<div class="actions no-print" style="margin-top:18px">';
+    // Use real anchors for submitted files so browser popup blockers cannot prevent access.
     if(reg) h+='<a class="secondary doc-open" href="'+esc(rawFinal(reg))+'" target="_blank" rel="noopener noreferrer">VIEW REGISTRATION DOCUMENT</a>';
     else h+='<button class="secondary" type="button" onclick="openDoc(\'\',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
     if(ins) h+='<a class="secondary doc-open" href="'+esc(rawFinal(ins))+'" target="_blank" rel="noopener noreferrer">VIEW INSURANCE DOCUMENT</a>';
     else h+='<button class="secondary" type="button" onclick="openDoc(\'\',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
-    h+='</div>';
+    h+='<button class="gold" type="button" onclick="printVehicle()">PRINT VEHICLE REPORT</button>';
+    h+='</div></div></div>';
 
     h+=section('VEHICLE INFORMATION',[
       ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],['Color','__COLOR__'],['Current Odometer Reading (km)',F.odo],['Current Vehicle Status',F.status]
@@ -861,7 +870,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     h+='<div class="footer">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>';
     document.getElementById('details').innerHTML=h;
     details.style.display='block';
-    document.getElementById('results').style.display='none';
+    document.getElementById('results').style.display='block';
   };
 })();
 </script>
