@@ -848,8 +848,8 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
       ['Registration Document Available','Is the vehicle registration document available?'],['Insurance Document Available','Is the vehicle insurance document available?'],['Basic Tools Available','Are basic vehicle tools available in the vehicle?'],['Maintenance Logbook Available','Is the vehicle maintenance logbook available?'],['Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?'],['Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?'],['Deficiency Details','Briefly describe the deficiency.']
     ]);
     h+='<div class="footer">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>';
-    detail.innerHTML=h;
-    detail.style.display='block';
+    details.innerHTML=h;
+    details.style.display='block';
     document.getElementById('results').style.display='none';
     window.scrollTo({top:0,behavior:'smooth'});
   };
