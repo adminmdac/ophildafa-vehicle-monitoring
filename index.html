@@ -57,7 +57,7 @@ tr:hover td{background:#f8fafc}
 .detail-intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px;padding:13px 15px;border-radius:10px;background:linear-gradient(135deg,#f6f8fb,#fff);border:1px solid #e0e7ef}
 .detail-intro .vehicle-name{font-size:19px;font-weight:850;color:var(--navy);letter-spacing:.2px}
 .detail-intro .vehicle-meta{font-size:11px;color:#667085;margin-top:3px}
-.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{display:grid!important;grid-template-columns:minmax(220px,24%) minmax(0,1fr)!important;column-gap:30px;align-items:stretch;margin-top:18px!important;width:100%!important;max-width:100%!important;min-width:0!important;min-height:260px!important;box-sizing:border-box;padding:28px 32px!important;border:1px solid #cfd9e5!important;border-left:6px solid var(--gold)!important;border-radius:10px!important;background:#f8fafc!important}.vehicle-status-box .status-main{min-width:0;display:flex;flex-direction:column;justify-content:flex-start}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:10px}.vehicle-status-box .status-value{font-size:18px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin:0!important;padding:0 0 0 30px!important;border:0!important;border-left:1px solid #e3e8ef!important;font-size:14px;line-height:1.8;color:#344054;white-space:pre-wrap;word-break:break-word;min-width:0;width:auto!important;align-self:stretch}.vehicle-status-box .status-detail:before{display:none!important}
+.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:14px;border:1px solid #cfd9e5;border-left:5px solid var(--gold);border-radius:10px;background:#f8fafc;padding:20px 22px;min-height:150px;width:100%;box-sizing:border-box}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:14px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:9px;padding-top:9px;border-top:1px solid #e3e8ef;font-size:12.5px;line-height:1.6;color:#344054;white-space:pre-wrap;word-break:break-word}
 .report-note{font-size:11px;color:#667085;margin-top:8px}
 .doc-modal{position:fixed;inset:0;background:rgba(4,18,39,.72);display:none;align-items:center;justify-content:center;padding:28px;z-index:9999}
 .doc-modal.show{display:flex}
@@ -87,23 +87,7 @@ tr:hover td{background:#f8fafc}
 .photo-image-wrap{width:100%;height:100%;min-height:380px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:14px;background:#f5f7fa}
 .photo-image-wrap .vehicle-photo{display:block;width:100%;height:100%;max-height:520px;object-fit:contain}
 </style>
-<style>
-/* FINAL VEHICLE STATUS: full remaining horizontal space of the vehicle-detail column. */
-#details .vehicle-status-box{
-  display:grid !important;
-  grid-template-columns:220px minmax(0,1fr) !important;
-  grid-template-rows:1fr !important;
-  column-gap:30px !important;
-  width:100% !important;
-  max-width:none !important;
-  min-width:0 !important;
-  min-height:260px !important;
-  box-sizing:border-box !important;
-  align-items:stretch !important;
-}
-#details .vehicle-status-box .status-main{grid-column:1 !important;grid-row:1 !important;min-width:0 !important;}
-#details .vehicle-status-box .status-detail{grid-column:2 !important;grid-row:1 !important;width:auto !important;min-width:0 !important;align-self:stretch !important;}
-</style></head>
+</head>
 <body>
 <div class="app">
   <div class="hero" aria-label="OPhilDAFA Vehicle Monitoring Report"></div>
@@ -386,7 +370,7 @@ function show(r){
   } else h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
   h+='</div><div class="actions no-print"><button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button></div></div>';
   h+='<div><div class=\"summary\">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>'<div class=\"card\"><div class=\"k\">'+esc(x[0])+'</div><div class=\"v\">'+esc(val(r,x[1])||'—')+'</div></div>').join('')+'</div>';
-  h+='<div class="vehicle-status-box"><div class="status-main"><div class="status-label">CURRENT VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div></div><div class="status-detail"><div class="status-label">STATUS DETAILS</div><div class="status-value">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'—')+'</div></div></div>';
+  h+='<div class="vehicle-status-box"><div class="status-label">VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div><div class="status-detail">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
   h+='<div class=\"actions no-print\"><button onclick=\"openDoc('+JSON.stringify(String(r.__REG_DOC__||'').trim())+',\'REGISTRATION DOCUMENT\')\">VIEW REGISTRATION DOCUMENT</button>';
   h+='<button onclick=\"openDoc('+JSON.stringify(String(r.__INS_DOC__||'').trim())+',\'INSURANCE DOCUMENT\')\">VIEW INSURANCE DOCUMENT</button>';
   h+='<button class=\"gold\" onclick=\"printVehicle()\">PRINT VEHICLE REPORT</button></div></div></div>';
@@ -744,7 +728,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
       return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
     }).join('')+'</div>';
 
-    h+='<div class="vehicle-status-box" style="display:grid!important;grid-template-columns:220px minmax(0,1fr)!important;width:100%!important;max-width:none!important;min-width:0!important;min-height:260px!important;box-sizing:border-box!important;"><div class="status-main"><div class="status-label">CURRENT VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div></div><div class="status-detail"><div class="status-label">STATUS DETAILS</div><div class="status-value">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'—')+'</div></div></div>';
+    h+='<div class="vehicle-status-box"><div class="status-label">VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div><div class="status-detail">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
 
     h+='<div class="actions no-print">';
     h+='<button type="button" onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
@@ -880,12 +864,12 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     else h+='<button class="secondary" type="button" onclick="openDoc(\'\',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
     h+='</div></div>';
 
-    h+='<div><div class="summary">'+main.map(x=>{
+    h+='<div><div class="summary">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>{
       const v=x[0]==='Color'?color:val(r,x[1]);
       return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
     }).join('')+'</div>';
 
-    h+='<div class="vehicle-status-box" style="display:grid!important;grid-template-columns:1fr 1fr!important;column-gap:30px!important;width:100%!important;max-width:none!important;min-width:0!important;min-height:150px!important;box-sizing:border-box!important;"><div class="status-main"><div class="status-label">CURRENT VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div></div><div class="status-detail" style="padding:0 0 0 30px!important;border-left:1px solid #e3e8ef!important;"><div class="status-label">STATUS DETAILS</div><div class="status-value">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'—')+'</div></div></div>';
+    h+='<div class="vehicle-status-box"><div class="status-label">VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div><div class="status-detail">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
 
     h+='<div class="actions no-print" style="margin-top:18px">';
     // Use real anchors for submitted files so browser popup blockers cannot prevent access.
@@ -918,4 +902,4 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
 
 </body></html>
 
-<style>@media (max-width:900px){.vehicle-status-box{grid-template-columns:1fr!important;row-gap:18px!important}.vehicle-status-box .status-detail{border-left:0!important;border-top:1px solid #e3e8ef!important;padding:18px 0 0!important}}</style>
+
