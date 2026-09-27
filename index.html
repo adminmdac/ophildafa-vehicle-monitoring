@@ -57,7 +57,7 @@ tr:hover td{background:#f8fafc}
 .detail-intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px;padding:13px 15px;border-radius:10px;background:linear-gradient(135deg,#f6f8fb,#fff);border:1px solid #e0e7ef}
 .detail-intro .vehicle-name{font-size:19px;font-weight:850;color:var(--navy);letter-spacing:.2px}
 .detail-intro .vehicle-meta{font-size:11px;color:#667085;margin-top:3px}
-.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:14px;border:1px solid #cfd9e5;border-left:5px solid var(--gold);border-radius:10px;background:#f8fafc;padding:20px 22px;min-height:150px;width:100%;box-sizing:border-box}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:14px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:9px;padding-top:9px;border-top:1px solid #e3e8ef;font-size:12.5px;line-height:1.6;color:#344054;white-space:pre-wrap;word-break:break-word}
+.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:24px 26px;min-height:210px;width:100%}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:16px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:9px;padding-top:9px;border-top:1px solid #e3e8ef;font-size:13px;line-height:1.7;color:#344054;white-space:pre-wrap;word-break:break-word}
 .report-note{font-size:11px;color:#667085;margin-top:8px}
 .doc-modal{position:fixed;inset:0;background:rgba(4,18,39,.72);display:none;align-items:center;justify-content:center;padding:28px;z-index:9999}
 .doc-modal.show{display:flex}
@@ -359,7 +359,7 @@ function show(r){
   const main=[
     ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
     ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-    ['Plate Number',F.plate],['Color','__COLOR__'],['Odometer',F.odo],['Vehicle Status',F.status]
+    ['Plate Number',F.plate],['Color','__COLOR__'],['Odometer',F.odo]
   ];
   let h='<div class=\"detail-intro\"><div><div class=\"vehicle-name\">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class=\"vehicle-meta\">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
   h+='<div class="vehicle-layout"><div><div class="photo-box">';
@@ -370,7 +370,7 @@ function show(r){
   } else h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
   h+='</div><div class="actions no-print"><button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button></div></div>';
   h+='<div><div class=\"summary\">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>'<div class=\"card\"><div class=\"k\">'+esc(x[0])+'</div><div class=\"v\">'+esc(val(r,x[1])||'—')+'</div></div>').join('')+'</div>';
-  h+='<div class="vehicle-status-box"><div class="status-label">VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div><div class="status-detail">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
+  h+='<div class=\"vehicle-status-box\"><div class=\"status-label\">VEHICLE STATUS</div><div class=\"status-value\">'+esc(val(r,F.status)||'—')+'</div><div class=\"status-detail\">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
   h+='<div class=\"actions no-print\"><button onclick=\"openDoc('+JSON.stringify(String(r.__REG_DOC__||'').trim())+',\'REGISTRATION DOCUMENT\')\">VIEW REGISTRATION DOCUMENT</button>';
   h+='<button onclick=\"openDoc('+JSON.stringify(String(r.__INS_DOC__||'').trim())+',\'INSURANCE DOCUMENT\')\">VIEW INSURANCE DOCUMENT</button>';
   h+='<button class=\"gold\" onclick=\"printVehicle()\">PRINT VEHICLE REPORT</button></div></div></div>';
@@ -403,7 +403,6 @@ function show(r){
     ['Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?'],
     ['Deficiency Details','Briefly describe the deficiency.']
   ]);
-  h+=`<div class=\"page2-note\">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>`;
   document.getElementById('details').innerHTML=h;
 }
 function clearSelection(){
@@ -412,73 +411,39 @@ function clearSelection(){
 }
 document.getElementById('clearBtn').onclick=clearSelection;
 
-function printVehicleImageUrl(value){
-  const raw=firstFileUrl(value);
-  const id=driveFileId(raw);
-  if(!raw) return '';
-  // Prefer the Google Drive thumbnail endpoint for a printable image; the exact
-  // submitted Drive URL remains available through the viewer/open button.
-  return id ? 'https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1600' : raw;
-}
-
 function printVehicle(){
   if(!selectedRecord){alert('Select a vehicle record first.');return}
-  const r=selectedRecord;
-  const photo=String(r.__PHOTO__||'').trim() || firstFileValue(r,['Vehicle Photograph','Vehicle Photo','Upload a recent three-quarter view photograph of the vehicle, showing the front, one side, and roof.','Vehicle Photograph / Photo']);
+  const r=selectedRecord, photo=firstFileValue(r,['Vehicle Photograph','Vehicle Photo','Upload a recent three-quarter view photograph of the vehicle, showing the front, one side, and roof.','Vehicle Photograph / Photo']);
   const win=window.open('','_blank');
-  if(!win){alert('Please allow pop-ups for the vehicle report.');return}
-  const row=(label,key)=>`<tr><td class="label">${esc(label)}</td><td>${esc(val(r,key)||'—')}</td></tr>`;
-  const status=val(r,F.status)||'—';
-  const statusDetail=val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.';
-  const imageUrl=photo?printVehicleImageUrl(photo):'';
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Vehicle Report - ${esc(val(r,F.plate))}</title><style>
-  @page{size:A4 portrait;margin:12mm}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#172b4d;background:#fff;font-size:9.5px;line-height:1.35}
-  .report{width:100%;max-width:186mm;margin:0 auto}
-  .header{position:relative;min-height:45mm;padding:7mm 60mm 5mm 0;border-bottom:3px solid #b58a2a;margin-bottom:6mm}
-  .agency{font-size:9px;font-weight:800;letter-spacing:.8px;color:#667085;text-transform:uppercase;margin-bottom:3mm}
-  .title{font-size:19px;font-weight:900;letter-spacing:.2px;color:#09254a;text-transform:uppercase;line-height:1.1}
-  .subtitle{font-size:9px;color:#667085;margin-top:2mm}
-  .vehicle-line{font-size:12px;font-weight:850;color:#09254a;margin-top:4mm}
-  .period{font-size:9px;color:#667085;margin-top:1mm}
-  .photo{position:absolute;top:0;right:0;width:50mm;height:38mm;object-fit:contain;border:1px solid #cbd5e1;border-radius:4px;background:#f8fafc;padding:1.5mm}
-  .photo-caption{position:absolute;right:0;top:39mm;width:50mm;text-align:center;font-size:7px;color:#667085;text-transform:uppercase;letter-spacing:.4px}
-  .section{margin-top:5mm;break-inside:avoid}
-  .section-title{background:#09254a;color:#fff;font-size:10px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;padding:2.5mm 3mm;border-left:3px solid #b58a2a}
-  table{width:100%;border-collapse:collapse;table-layout:fixed}
-  td{border:1px solid #d9e0e8;padding:2.2mm 2.5mm;vertical-align:top}
-  td.label{width:34%;font-weight:800;color:#52627a;background:#f4f7fa}
-  .status-box{margin-top:5mm;border:1px solid #cfd9e5;border-left:4px solid #b58a2a;border-radius:4px;background:#f8fafc;padding:4mm;display:grid;grid-template-columns:34% 66%;break-inside:avoid}
-  .status-main{padding-right:5mm;border-right:1px solid #d9e0e8}.status-caption{font-size:8px;font-weight:900;color:#667085;text-transform:uppercase;letter-spacing:.5px}.status-value{font-size:12px;font-weight:900;color:#09254a;margin-top:2mm}.status-detail{padding-left:5mm;color:#344054;white-space:pre-wrap}
-  .footer{margin-top:7mm;padding-top:3mm;border-top:1px solid #d9e0e8;font-size:7.5px;color:#7b8794;text-align:center}
-  .page2-note{margin-top:7mm;padding:3mm 4mm;border-top:1px solid #d9e0e8;font-size:7.5px;color:#7b8794;text-align:center}
-  .page-break{break-before:page}
-  .section table tr{break-inside:avoid}
-  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}}
-  </style></head><body><div class="report">
-  <div class="header">
-    <div class="agency">MILITARY DIPLOMATIC AFFAIRS CENTER | OPhilDAFA VEHICLE MONITORING</div>
-    <div class="title">VEHICLE MONITORING REPORT</div>
-    <div class="subtitle">Historical Vehicle Record</div>
-    <div class="vehicle-line">${esc(val(r,F.make)||'Vehicle Record')} — ${esc(val(r,F.plate)||'')}</div>
-    <div class="period">${esc(val(r,F.post)||'')} &nbsp;•&nbsp; ${esc(val(r,F.quarter)||'')} CY ${esc(val(r,F.year)||'')}</div>
-    ${imageUrl?`<img class="photo" src="${esc(imageUrl)}" onerror="this.style.display='none'"><div class="photo-caption">Vehicle Photograph</div>`:''}
-  </div>
-  <div class="section"><div class="section-title">Vehicle Information</div><table>
-    ${row('Post',F.post)}${row('Reporting Quarter',F.quarter)}${row('Year',F.year)}${row('Source',F.source)}
-    ${row('Vehicle Type',F.type)}${row('Fuel Type','Fuel Type')}${row('Make / Model',F.make)}${row('Plate Number',F.plate)}
-    ${row('Year Model','Year Model')}${row('Color','__COLOR__')}${row('Odometer','Odometer')}
-  </table></div>
-  <div class="status-box"><div class="status-main"><div class="status-caption">Vehicle Status</div><div class="status-value">${esc(status)}</div></div><div class="status-detail">${esc(statusDetail)}</div></div>
-  <div class="section"><div class="section-title">Registration</div><table>${row('Registration Status','Registration Status')}${row('Date of Registration','Date of Registration')}${row('Registration Expiry Date','Registration Expiry Date')}${row('Registration Amount','Registration Amount')}${row('Remarks','Remarks')}</table></div>
-  <div class="section"><div class="section-title">Maintenance / PMS</div><table>${row('PMS / Change Oil Status','PMS / Change Oil Status')}${row('Last PMS / Change Oil','Date of Last PMS / Change Oil')}${row('Next PMS / Change Oil Due','Next PMS / Change Oil Due')}${row('Quarterly PMS Fund Allocation','Quarterly PMS Fund Allocation')}${row('PMS Remarks','Remarks_1')}${row('Battery Status','Battery Status')}${row('Battery Last Replaced','Date Battery Last Replaced')}${row('Battery Replacement Due','Battery Replacement Due / Recommended Date')}${row('Battery Remarks','Remarks_2')}${row('Tire Status','Tire Status')}${row('Tire Last Replaced','Date Last Replaced')}${row('Tire Replacement Due','Tire Replacement Due / Recommended Date')}${row('Tire Remarks','Remarks_3')}</table></div>
-  \n  <div class="section"><div class="section-title">Insurance</div><table>${row('Insurance Status','Insurance Status')}${row('Provider','Insurance Provider')}${row('Policy / Certificate Number','Policy / Certificate Number')}${row('Date Insured','Date Insured')}${row('Renewal / Expiry','Date Renewal')}${row('Coverage','Insurance Coverage')}${row('Premium / Amount Paid','Insurance Premium / Amount Paid')}</table></div>
-  <div class="section"><div class="section-title">Vehicle Readiness</div><table>${row('Registration Document Available','Is the vehicle registration document available?')}${row('Insurance Document Available','Is the vehicle insurance document available?')}${row('Basic Tools Available','Are basic vehicle tools available in the vehicle?')}${row('Maintenance Logbook Available','Is the vehicle maintenance logbook available?')}${row('Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?')}${row('Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?')}${row('Deficiency Details','Briefly describe the deficiency.')}</table></div>
+  const row=(label,key)=>`<tr><td>${esc(label)}</td><td>${esc(val(r,key)||'—')}</td></tr>`;
+  win.document.write(`<!doctype html><html><head><title>Vehicle Report - ${esc(val(r,F.plate))}</title><style>
+  @page{size:A4;margin:13mm}body{font-family:Arial,sans-serif;color:#172033;font-size:10px}
+  .head{border-bottom:4px solid #b58a2a;padding-bottom:8px}.title{font-size:19px;font-weight:800;color:#09254a}
+  .sub{font-size:10px;color:#667085;margin-top:3px}.period{margin-top:10px;font-weight:800}
+  h2{font-size:11px;background:#09254a;color:white;padding:6px 8px;margin:12px 0 0}
+  table{width:100%;border-collapse:collapse}td{border:1px solid #d8dee7;padding:5px;vertical-align:top}td:first-child{width:28%;font-weight:800;background:#f4f6f8}
+  .photo{float:right;width:150px;height:110px;object-fit:cover;border:1px solid #ccd5df;margin-left:12px}
+  .clear{clear:both}.footer{margin-top:16px;font-size:8px;color:#667085}
+  </style></head><body>
+  <div class="head"><div class="title">OPHILDAFA VEHICLE MONITORING REPORT</div><div class="sub">Military Diplomatic Affairs Center | Historical Vehicle Record</div></div>
+  ${photo?`<img class="photo" src="${esc(driveImage(photo))}" onerror="this.style.display='none'">`:''}
+  <div class="period">${esc(val(r,F.post))} — ${esc(val(r,F.quarter))} CY ${esc(val(r,F.year))}</div>
+  <h2>VEHICLE INFORMATION</h2><table>
+  ${row('Post',F.post)}${row('Reporting Quarter',F.quarter)}${row('Year',F.year)}${row('Source',F.source)}
+  ${row('Vehicle Type',F.type)}${row('Fuel Type','Fuel Type')}${row('Make / Model',F.make)}${row('Plate Number',F.plate)}
+  ${row('Year Model','Year Model')}${row('Odometer',F.odo)}${row('Vehicle Status',F.status)}
+  </table><div class="clear"></div>
+  <h2>REGISTRATION</h2><table>${row('Registration Status','Registration Status')}${row('Date of Registration','Date of Registration')}${row('Registration Expiry Date','Registration Expiry Date')}${row('Registration Amount','Registration Amount')}${row('Remarks','Remarks')}</table>
+  <h2>MAINTENANCE / PMS</h2><table>${row('PMS / Change Oil Status','PMS / Change Oil Status')}${row('Last PMS / Change Oil','Date of Last PMS / Change Oil')}${row('Next PMS / Change Oil Due','Next PMS / Change Oil Due')}${row('Quarterly PMS Fund Allocation','Quarterly PMS Fund Allocation')}${row('PMS Remarks','Remarks_1')}${row('Battery Status','Battery Status')}${row('Battery Last Replaced','Date Battery Last Replaced')}${row('Battery Replacement Due','Battery Replacement Due / Recommended Date')}${row('Battery Remarks','Remarks_2')}${row('Tire Status','Tire Status')}${row('Tire Last Replaced','Date Last Replaced')}${row('Tire Replacement Due','Tire Replacement Due / Recommended Date')}${row('Tire Remarks','Remarks_3')}</table>
+  <h2>INSURANCE</h2><table>${row('Insurance Status','Insurance Status')}${row('Provider','Insurance Provider')}${row('Policy / Certificate Number','Policy / Certificate Number')}${row('Date Insured','Date Insured')}${row('Renewal / Expiry','Date Renewal')}${row('Coverage','Insurance Coverage')}${row('Premium / Amount Paid','Insurance Premium / Amount Paid')}</table>
+  <h2>VEHICLE READINESS</h2><table>${row('Registration Document Available','Is the vehicle registration document available?')}${row('Insurance Document Available','Is the vehicle insurance document available?')}${row('Basic Tools Available','Are basic vehicle tools available in the vehicle?')}${row('Maintenance Logbook Available','Is the vehicle maintenance logbook available?')}${row('Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?')}${row('Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?')}${row('Deficiency Details','Briefly describe the deficiency.')}</table>
   <div class="footer">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>
-  </div></body></html>`);
-  win.document.close();
-  setTimeout(()=>win.print(),700);
+  
+
+
+
+</body></html>`);
+  win.document.close(); setTimeout(()=>win.print(),500);
 }
 
 document.getElementById('quarterlyBtn').onclick=async()=>{
@@ -506,9 +471,9 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     return;
   }
 
-  // IMPORTANT: Quarterly Report is a report of the CURRENT SEARCH RESULT SET.
-  // Do not query RECORDS again here; doing so can reintroduce records outside the
-  // exact result set the user just searched.
+  // IMPORTANT: use the exact records returned by the last SEARCH.
+  // Do not rebuild the report from RECORDS, which can include records outside
+  // the exact search result set displayed to the user.
   if(!searchedRecords.length){
     alert('Please click SEARCH first. The Quarterly Report is based on the records currently returned by SEARCH.');
     return;
@@ -708,7 +673,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     const main=[
       ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
       ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-      ['Plate Number',F.plate],['Color','__COLOR__'],['Odometer',F.odo],['Vehicle Status',F.status]
+      ['Plate Number',F.plate],['Color','__COLOR__'],['Odometer',F.odo]
     ];
 
     let h='<div class="detail-intro"><div><div class="vehicle-name">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class="vehicle-meta">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
@@ -812,13 +777,6 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     const id=fileIdFinal(url); return id ? 'https://drive.google.com/file/d/'+encodeURIComponent(id)+'/preview' : '';
   }
 
-  window.closeDoc=function(){
-    const modal=document.getElementById('docModal');
-    const body=document.getElementById('docBody');
-    if(modal) modal.classList.remove('show');
-    if(body) body.innerHTML='';
-  };
-
   window.openDoc=function(url,title='DOCUMENT'){
     const raw=rawFinal(url), id=fileIdFinal(raw);
     const modal=document.getElementById('docModal'), body=document.getElementById('docBody');
@@ -832,7 +790,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
       '<div class="doc-actions" style="margin-bottom:12px">'+
       '<a class="doc-open" href="'+esc(raw)+'" target="_blank" rel="noopener noreferrer">OPEN EXACT FILE IN GOOGLE DRIVE</a>'+
       '</div>'+
-      '<iframe src="'+esc(preview)+'" title="'+esc(title)+'" style="width:100%;height:calc(92vh - 125px);min-height:420px;border:1px solid #d7dde5;border-radius:8px;background:#fff" allow="autoplay"></iframe>'+
+      '<iframe src="'+esc(preview)+'" title="'+esc(title)+'" style="width:100%;height:70vh;border:1px solid #d7dde5;border-radius:8px;background:#fff" allow="autoplay"></iframe>'+
       '<div class="doc-fallback" style="margin-top:10px"><p class="doc-note">This is the exact file attached to the selected historical response.</p></div>';
     modal.classList.add('show');
   };
@@ -848,7 +806,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     const main=[
       ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
       ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-      ['Plate Number',F.plate],['Color',null],['Odometer',F.odo],['Vehicle Status',F.status]
+      ['Plate Number',F.plate],['Color',null],['Odometer',F.odo]
     ];
 
     let h='<div class="detail-intro"><div><div class="vehicle-name">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class="vehicle-meta">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
@@ -860,26 +818,22 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
       h+='<div class="photo-placeholder">NO VEHICLE PHOTOGRAPH<br>AVAILABLE FOR THIS HISTORICAL RECORD</div>';
     }
     h+='</div><div class="actions no-print">';
-    if(photoRaw) h+='<a class="secondary doc-open" href="'+esc(photoRaw)+'" target="_blank" rel="noopener noreferrer">VIEW VEHICLE PICTURE</a>';
-    else h+='<button class="secondary" type="button" onclick="openDoc(\'\',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
+    if(photoRaw) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(photo)+',\'VEHICLE PICTURE\')">VIEW VEHICLE PICTURE</button>';
     h+='</div></div>';
 
-    h+='<div><div class="summary">'+main.filter(x=>x[0]!=='Vehicle Status').map(x=>{
+    h+='<div><div class="summary">'+main.map(x=>{
       const v=x[0]==='Color'?color:val(r,x[1]);
       return '<div class="card"><div class="k">'+esc(x[0])+'</div><div class="v">'+esc(v||'—')+'</div></div>';
-    }).join('')+'</div>';
-
-    h+='<div class="vehicle-status-box"><div class="status-label">VEHICLE STATUS</div><div class="status-value">'+esc(val(r,F.status)||'—')+'</div><div class="status-detail">'+esc(val(r,'Describe the vehicle’s current operational status, condition, or deficiency.')||'No additional status details submitted.')+'</div></div>';
+    }).join('')+'</div></div></div>';
 
     h+='<div class="actions no-print" style="margin-top:18px">';
-    // Use real anchors for submitted files so browser popup blockers cannot prevent access.
-    if(reg) h+='<a class="secondary doc-open" href="'+esc(rawFinal(reg))+'" target="_blank" rel="noopener noreferrer">VIEW REGISTRATION DOCUMENT</a>';
-    else h+='<button class="secondary" type="button" onclick="openDoc(\'\',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
-    if(ins) h+='<a class="secondary doc-open" href="'+esc(rawFinal(ins))+'" target="_blank" rel="noopener noreferrer">VIEW INSURANCE DOCUMENT</a>';
-    else h+='<button class="secondary" type="button" onclick="openDoc(\'\',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
-    h+='<button class="gold" type="button" onclick="printVehicle()">PRINT VEHICLE REPORT</button>';
-    h+='</div></div></div>';
+    if(reg) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(reg)+',\'REGISTRATION DOCUMENT\')">VIEW REGISTRATION DOCUMENT</button>';
+    if(ins) h+='<button class="secondary" type="button" onclick="openDoc('+JSON.stringify(ins)+',\'INSURANCE DOCUMENT\')">VIEW INSURANCE DOCUMENT</button>';
+    h+='</div>';
 
+    h+=section('VEHICLE INFORMATION',[
+      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],['Color','__COLOR__'],['Current Odometer Reading (km)',F.odo],['Current Vehicle Status',F.status]
+    ]);
     h+=section('REGISTRATION',[
       ['Registration Document Available','Is the vehicle registration document available?'],['Registration Number','Registration Number'],['Registration Expiry','Registration Expiry'],['Registration Remarks','Registration Remarks']
     ]);
@@ -896,10 +850,9 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     document.getElementById('details').innerHTML=h;
     details.style.display='block';
     document.getElementById('results').style.display='block';
+    window.scrollTo({top:0,behavior:'smooth'});
   };
 })();
 </script>
 
 </body></html>
-
-
