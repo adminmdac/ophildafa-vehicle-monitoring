@@ -57,7 +57,7 @@ tr:hover td{background:#f8fafc}
 .detail-intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px;padding:13px 15px;border-radius:10px;background:linear-gradient(135deg,#f6f8fb,#fff);border:1px solid #e0e7ef}
 .detail-intro .vehicle-name{font-size:19px;font-weight:850;color:var(--navy);letter-spacing:.2px}
 .detail-intro .vehicle-meta{font-size:11px;color:#667085;margin-top:3px}
-.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:30px 32px;min-height:330px;width:100%;box-sizing:border-box}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:6px}.vehicle-status-box .status-value{font-size:18px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:14px;padding-top:14px;border-top:1px solid #e3e8ef;font-size:14px;line-height:1.8;color:#344054;white-space:pre-wrap;word-break:break-word}
+.status-badge{display:inline-block;padding:4px 8px;border-radius:20px;background:#edf4ff;color:#1849a9;font-size:10px;font-weight:800}.vehicle-status-box{margin-top:18px;border:1px solid #cfd9e5;border-left:6px solid var(--gold);border-radius:10px;background:#f8fafc;padding:26px 32px;min-height:330px;width:100%;box-sizing:border-box;display:grid;grid-template-columns:minmax(190px,24%) 1fr;column-gap:28px;align-items:start}.vehicle-status-box .status-label{font-size:10px;font-weight:900;letter-spacing:.5px;color:#667085;text-transform:uppercase;margin-bottom:8px}.vehicle-status-box .status-value{font-size:18px;font-weight:800;color:var(--navy);line-height:1.45}.vehicle-status-box .status-detail{margin-top:0;padding-top:0;border-top:0;font-size:14px;line-height:1.8;color:#344054;white-space:pre-wrap;word-break:break-word;min-width:0;width:100%;align-self:stretch}.vehicle-status-box .status-detail:before{content:"";display:block;border-top:1px solid #e3e8ef;margin-bottom:14px}
 .report-note{font-size:11px;color:#667085;margin-top:8px}
 .doc-modal{position:fixed;inset:0;background:rgba(4,18,39,.72);display:none;align-items:center;justify-content:center;padding:28px;z-index:9999}
 .doc-modal.show{display:flex}
@@ -876,3 +876,5 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
 </script>
 
 </body></html>
+
+<style>@media (max-width:900px){.vehicle-status-box{grid-template-columns:1fr;row-gap:14px}.vehicle-status-box .status-detail:before{margin-bottom:14px}}</style>
