@@ -158,7 +158,12 @@ function parseCSV(text){
   if(!rows.length)return [];
   const headers=rows[0].map(h=>String(h).trim());
   return rows.slice(1).filter(r=>r.some(v=>String(v||'').trim()!=='')).map(r=>{
-    const o={}; headers.forEach((h,i)=>o[h]=String(r[i]??'').trim()); return o;
+    const o={}; headers.forEach((h,i)=>o[h]=String(r[i]??'').trim());
+    o.__REG_DOC__=String(r[19]??'').trim(); // T
+    o.__INS_DOC__=String(r[27]??'').trim(); // AB
+    o.__PHOTO__=String(r[47]??'').trim(); // AV
+    o.__COLOR__=String(r[48]??'').trim(); // AW
+    return o;
   });
 }
 
@@ -436,6 +441,8 @@ function printVehicle(){
   <h2>VEHICLE READINESS</h2><table>${row('Registration Document Available','Is the vehicle registration document available?')}${row('Insurance Document Available','Is the vehicle insurance document available?')}${row('Basic Tools Available','Are basic vehicle tools available in the vehicle?')}${row('Maintenance Logbook Available','Is the vehicle maintenance logbook available?')}${row('Maintenance Logbook Updated','Is the vehicle maintenance logbook updated?')}${row('Other Readiness Deficiencies','Are there any other deficiencies affecting vehicle readiness?')}${row('Deficiency Details','Briefly describe the deficiency.')}</table>
   <div class="footer">Generated from the historical OPhilDAFA Vehicle Monitoring record. This report does not alter the underlying historical submission.</div>
   
+
+
 
 </body></html>`);
   win.document.close(); setTimeout(()=>win.print(),500);
