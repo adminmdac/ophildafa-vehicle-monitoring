@@ -850,7 +850,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     const main=[
       ['Post',F.post],['Reporting Quarter',F.quarter],['Year',F.year],['Source',F.source],
       ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],
-      ['Plate Number',F.plate],['Color',null],['Odometer',F.odo]
+      ['Plate Number',F.plate],['Year Model','Year Model'],['Color',null],['Odometer',F.odo]
     ];
 
     let h='<div class="detail-intro"><div><div class="vehicle-name">'+esc(val(r,F.make)||'Vehicle Record')+'</div><div class="vehicle-meta">'+esc(val(r,F.post))+' &nbsp;•&nbsp; '+esc(val(r,F.plate))+' &nbsp;•&nbsp; '+esc(val(r,F.quarter))+' CY '+esc(val(r,F.year))+'</div></div></div>';
@@ -887,7 +887,7 @@ document.getElementById('quarterlyBtn').onclick=async()=>{
     h+='</div></div></div>';
 
     h+=section('VEHICLE INFORMATION',[
-      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],['Color','__COLOR__'],['Current Odometer Reading (km)',F.odo],['Current Vehicle Status',F.status]
+      ['Vehicle Type',F.type],['Fuel Type','Fuel Type'],['Make / Model',F.make],['Plate Number',F.plate],['Year Model','Year Model'],['Color','__COLOR__'],['Current Odometer Reading (km)',F.odo],['Current Vehicle Status',F.status]
     ]);
     h+=section('REGISTRATION',[
       ['Registration Document Available','Is the vehicle registration document available?'],['Registration Number','Registration Number'],['Registration Expiry','Registration Expiry'],['Registration Remarks','Registration Remarks']
